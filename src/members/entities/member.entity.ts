@@ -4,9 +4,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToOne, // <--- ADICIONADO: Import do OneToOne
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Instructor } from '../../instructors/entities/instructor.entity';
+// ADICIONADO: Import da entidade Anamnesis (confira se o nome do arquivo lá na pasta está 'anamnesis.entity.ts' no singular)
+import { Anamnesis } from '../../anamneses/entities/anamnesis.entity';
 
 @Entity('members')
 export class Member {
@@ -35,8 +38,17 @@ export class Member {
   @JoinColumn({ name: 'createdByInstructorId' })
   createdByInstructor: Instructor;
 
+  // --- ADICIONADO: O Relacionamento com a Anamnesis ---
+  @OneToOne(() => Anamnesis, (anamnesis) => anamnesis.member)
+  anamnesis: Anamnesis;
+  // ----------------------------------------------------
+
   @CreateDateColumn()
   createdAt: Date;
+<<<<<<< HEAD
 }
 
 
+=======
+}
+>>>>>>> fd36a89d53ff6ca716a7772befcb8ed3815bc959

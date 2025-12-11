@@ -6,6 +6,10 @@ import { AppService } from './app.service';
 import { InstructorsModule } from './instructors/instructors.module';
 import { AuthModule } from './auth/auth.module';
 import { MembersModule } from './members/members.module';
+import { AnamnesesModule } from './anamneses/anamneses.module';
+import { ExercisesModule } from './exercises/exercises.module';
+import { WorkoutsModule } from './workouts/workouts.module';
+import { WorkoutItemsModule } from './workout-items/workout-items.module';
 
 @Module({
   imports: [
@@ -26,6 +30,11 @@ import { MembersModule } from './members/members.module';
     InstructorsModule,
     AuthModule,
     MembersModule,
+    AnamnesesModule,
+    ExercisesModule,
+    WorkoutsModule,
+    // ADICIONADO AGORA NA LISTA:
+    WorkoutItemsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
