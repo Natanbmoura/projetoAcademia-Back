@@ -4,11 +4,10 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToOne, // <--- ADICIONADO: Import do OneToOne
+  OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Instructor } from '../../instructors/entities/instructor.entity';
-// ADICIONADO: Import da entidade Anamnesis (confira se o nome do arquivo lá na pasta está 'anamnesis.entity.ts' no singular)
 import { Anamnesis } from '../../anamneses/entities/anamnesis.entity';
 
 @Entity('members')
@@ -28,27 +27,42 @@ export class Member {
   @Column({ unique: true })
   email: string;
 
+ 
   @Column()
   emergencyPhone: string;
 
   @Column()
   emergencyEmail: string;
 
+  
+  @Column({ default: 0 })
+  xp: number; 
+
+  @Column({ default: 1 })
+  level: number; 
+
+  @Column({ default: 0 })
+  currentStreak: number; 
+
+  @Column({ default: 'light' })
+  theme: string; 
+
+  @Column({ default: true })
+  notifyWorkout: boolean; 
+
+  @Column({ default: true })
+  notifyAchievements: boolean; 
+
+  @Column({ default: true })
+  notifyRanking: boolean; 
+
   @ManyToOne(() => Instructor, { nullable: false })
   @JoinColumn({ name: 'createdByInstructorId' })
   createdByInstructor: Instructor;
 
-  // --- ADICIONADO: O Relacionamento com a Anamnesis ---
   @OneToOne(() => Anamnesis, (anamnesis) => anamnesis.member)
   anamnesis: Anamnesis;
-  // ----------------------------------------------------
 
   @CreateDateColumn()
   createdAt: Date;
-<<<<<<< HEAD
 }
-
-
-=======
-}
->>>>>>> fd36a89d53ff6ca716a7772befcb8ed3815bc959

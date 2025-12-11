@@ -10,6 +10,9 @@ import { AnamnesesModule } from './anamneses/anamneses.module';
 import { ExercisesModule } from './exercises/exercises.module';
 import { WorkoutsModule } from './workouts/workouts.module';
 import { WorkoutItemsModule } from './workout-items/workout-items.module';
+// --- NOVOS IMPORTS ADICIONADOS ---
+import { WorkoutHistoryModule } from './workout-history/workout-history.module';
+import { AchievementsModule } from './achievements/achievements.module';
 
 @Module({
   imports: [
@@ -33,8 +36,9 @@ import { WorkoutItemsModule } from './workout-items/workout-items.module';
     AnamnesesModule,
     ExercisesModule,
     WorkoutsModule,
-    // ADICIONADO AGORA NA LISTA:
     WorkoutItemsModule,
+    WorkoutHistoryModule,
+    AchievementsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

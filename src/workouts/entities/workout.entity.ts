@@ -23,12 +23,11 @@ export class Workout {
   @Column({ default: true })
   isActive: boolean;
 
-  // Relacionamento: Um treino pertence a UM aluno
   @ManyToOne(() => Member, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'memberId' })
   member: Member;
 
-  // Relacionamento: Um treino foi criado por UM instrutor
+
   @ManyToOne(() => Instructor, { nullable: false })
   @JoinColumn({ name: 'instructorId' })
   instructor: Instructor;

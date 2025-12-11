@@ -7,19 +7,16 @@ export class WorkoutItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // --- RELACIONAMENTOS ---
-  
-  // Pertence a um Treino (Ex: Treino A)
   @ManyToOne(() => Workout, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workoutId' })
   workout: Workout;
 
-  // Pertence a um Exercício (Ex: Supino)
+
   @ManyToOne(() => Exercise, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'exerciseId' })
   exercise: Exercise;
 
-  // --- DADOS DA SÉRIE ---
+
 
   @Column()
   sets: number;
@@ -31,7 +28,7 @@ export class WorkoutItem {
   weight: number;
 
   @Column({ nullable: true })
-  restTime: number; // em segundos
+  restTime: number; 
 
   @Column({ type: 'text', nullable: true })
   observations: string;
