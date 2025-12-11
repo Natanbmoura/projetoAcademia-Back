@@ -28,3 +28,4 @@ export class CreateMemberDto {
   emergencyEmail: string;
 }
 
+
