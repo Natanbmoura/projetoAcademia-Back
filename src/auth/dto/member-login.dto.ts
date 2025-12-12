@@ -13,3 +13,4 @@ export class MemberLoginDto {
   password: string; // Telefone na primeira vez, senha customizada depois
 }
 
+

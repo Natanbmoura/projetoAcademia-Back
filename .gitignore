@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+*.tsbuildinfo
 
 # Logs
 logs
@@ -11,15 +12,19 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-*.tsbuildinfo
 
 # OS
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
+.directory
 
 # Tests
 /coverage
 /.nyc_output
+*.lcov
 
 # IDEs and editors
 /.idea
@@ -29,6 +34,7 @@ Thumbs.db
 *.launch
 .settings/
 *.sublime-workspace
+*.sublime-project
 
 # IDE - VSCode
 .vscode/*
@@ -36,13 +42,16 @@ Thumbs.db
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+!.vscode/*.code-snippets
 
 # dotenv environment variable files
 .env
+.env.*
+.env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env.local
+!.env.example
 
 # temp directory
 .temp
@@ -65,3 +74,32 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .history
 .cursor/
 .turbo/
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# TypeORM
+ormconfig.json
+ormconfig.js
+ormconfig.ts
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Package manager lock files (descomente se não quiser versionar)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Build artifacts
+*.map
+*.d.ts.map
+
+# Local development
+.local
+local/
