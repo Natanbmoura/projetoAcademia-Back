@@ -1,7 +1,7 @@
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export class LoginDto {
+export class MemberLoginDto {
   @IsEmail()
   @IsNotEmpty()
   @Transform(({ value }) => value?.trim().toLowerCase())
@@ -10,7 +10,6 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => value?.trim())
-  password: string;
+  password: string; // Telefone na primeira vez, senha customizada depois
 }
-
 

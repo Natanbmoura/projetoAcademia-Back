@@ -34,7 +34,15 @@ export class Member {
   @Column()
   emergencyEmail: string;
 
-  
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  weight: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  height: number;
+
+  @Column({ nullable: true })
+  gender: string;
+
   @Column({ default: 0 })
   xp: number; 
 
@@ -55,6 +63,12 @@ export class Member {
 
   @Column({ default: true })
   notifyRanking: boolean; 
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  passwordHash: string | null;
+
+  @Column({ default: true })
+  needsPasswordChange: boolean;
 
   @ManyToOne(() => Instructor, { nullable: false })
   @JoinColumn({ name: 'createdByInstructorId' })

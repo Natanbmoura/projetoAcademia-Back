@@ -31,16 +31,16 @@ export class Anamnesis {
   weeklyFrequency: string;
 
   @Column({ type: 'text', nullable: true }) // nullable: true porque é opcional
-  healthProblems: string;
+  healthProblems: string | null;
 
   @Column({ type: 'text', nullable: true })
-  medicalRestrictions: string;
+  medicalRestrictions: string | null;
 
   @Column({ type: 'text', nullable: true })
-  medication: string;
+  medication: string | null;
 
   @Column({ type: 'text', nullable: true })
-  injuries: string;
+  injuries: string | null;
 
   @Column()
   activityLevel: string;

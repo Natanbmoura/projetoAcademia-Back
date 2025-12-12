@@ -5,6 +5,7 @@ import { WorkoutHistory } from './entities/workout-history.entity';
 import { CreateWorkoutHistoryDto } from './dto/create-workout-history.dto';
 import { Member } from '../members/entities/member.entity';
 import { Workout } from '../workouts/entities/workout.entity';
+import { MembersService } from '../members/members.service';
 
 @Injectable()
 export class WorkoutHistoryService {
@@ -15,6 +16,7 @@ export class WorkoutHistoryService {
     private readonly membersRepository: Repository<Member>,
     @InjectRepository(Workout)
     private readonly workoutsRepository: Repository<Workout>,
+    private readonly membersService: MembersService,
   ) {}
 
   async create(dto: CreateWorkoutHistoryDto) {
@@ -26,7 +28,10 @@ export class WorkoutHistoryService {
     const workout = await this.workoutsRepository.findOne({ where: { id: dto.workoutId } });
     if (!workout) throw new NotFoundException('Treino não encontrado.');
 
-    // 3. Salvar Histórico
+    // 3. Adicionar XP ao membro
+    await this.membersService.addXP(dto.memberId, dto.xpEarned);
+
+    // 4. Salvar Histórico
     const history = this.historyRepository.create({
       ...dto,
       startTime: new Date(dto.startTime),
@@ -45,5 +50,62 @@ export class WorkoutHistoryService {
       relations: ['workout'],
       order: { endTime: 'DESC' }, // Traz os mais recentes primeiro
     });
+  }
+
+  async completeWorkout(memberId: string, workoutId: string) {
+    // 1. Validar Aluno
+    const member = await this.membersRepository.findOne({ where: { id: memberId } });
+    if (!member) throw new NotFoundException('Aluno não encontrado.');
+
+    // 2. Validar Treino
+    const workout = await this.workoutsRepository.findOne({ where: { id: workoutId } });
+    if (!workout) throw new NotFoundException('Treino não encontrado.');
+
+    // 3. Verificar se já completou este treino hoje (opcional - para evitar duplicatas)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existingHistory = await this.historyRepository
+      .createQueryBuilder('history')
+      .where('history.memberId = :memberId', { memberId })
+      .andWhere('history.workoutId = :workoutId', { workoutId })
+      .andWhere('history.endTime >= :today', { today })
+      .andWhere('history.endTime < :tomorrow', { tomorrow })
+      .getOne();
+
+    if (existingHistory) {
+      // Já completou hoje, retornar o histórico existente
+      const updatedMember = await this.membersRepository.findOne({ where: { id: memberId } });
+      return {
+        ...existingHistory,
+        member: updatedMember,
+      };
+    }
+
+    // 4. Adicionar 10 XP ao membro
+    const xpEarned = 10;
+    await this.membersService.addXP(memberId, xpEarned);
+
+    // 5. Salvar Histórico
+    const now = new Date();
+    const history = this.historyRepository.create({
+      member,
+      workout,
+      startTime: now,
+      endTime: now,
+      xpEarned,
+    });
+
+    const savedHistory = await this.historyRepository.save(history);
+
+    // 6. Buscar membro atualizado para retornar XP e level atualizados
+    const updatedMember = await this.membersRepository.findOne({ where: { id: memberId } });
+
+    return {
+      ...savedHistory,
+      member: updatedMember,
+    };
   }
 }

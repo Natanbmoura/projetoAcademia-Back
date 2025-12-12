@@ -5,9 +5,11 @@ import { WorkoutsService } from './workouts.service';
 import { Workout } from './entities/workout.entity';
 import { Member } from '../members/entities/member.entity';
 import { Instructor } from '../instructors/entities/instructor.entity';
+import { WorkoutItem } from '../workout-items/entities/workout-item.entity';
+import { Exercise } from '../exercises/entities/exercise.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Workout, Member, Instructor])],
+  imports: [TypeOrmModule.forFeature([Workout, Member, Instructor, WorkoutItem, Exercise])],
   controllers: [WorkoutsController],
   providers: [WorkoutsService],
   exports: [WorkoutsService] // Exportamos caso precisemos usar em outro lugar

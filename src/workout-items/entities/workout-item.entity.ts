@@ -25,7 +25,7 @@ export class WorkoutItem {
   repetitions: number;
 
   @Column({ type: 'float', nullable: true })
-  weight: number;
+  weight: number | null;
 
   @Column({ nullable: true })
   restTime: number; 

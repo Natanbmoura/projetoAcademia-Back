@@ -1,9 +1,11 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { Instructor } from '../instructors/entities/instructor.entity';
 import { Member } from './entities/member.entity';
 import { CreateMemberDto } from './dto/create-member.dto';
+import { Anamnesis } from '../anamneses/entities/anamnesis.entity';
 
 @Injectable()
 export class MembersService {
@@ -12,6 +14,8 @@ export class MembersService {
     private readonly membersRepository: Repository<Member>,
     @InjectRepository(Instructor)
     private readonly instructorsRepository: Repository<Instructor>,
+    @InjectRepository(Anamnesis)
+    private readonly anamnesisRepository: Repository<Anamnesis>,
   ) {}
 
   async create(dto: CreateMemberDto, instructorId: string) {
@@ -23,17 +27,212 @@ export class MembersService {
       throw new ForbiddenException('Instrutor inválido');
     }
 
+    // Extrair campos da anamnese do DTO
+    const {
+      mainGoal,
+      experienceLevel,
+      weeklyFrequency,
+      healthNotes,
+      ...memberData
+    } = dto;
+
+    // Criar hash da senha padrão "123"
+    const defaultPassword = '123';
+    const initialPasswordHash = await bcrypt.hash(defaultPassword, 10);
+
+    // Criar o membro
     const member = this.membersRepository.create({
-      ...dto,
+      ...memberData,
+      passwordHash: initialPasswordHash,
+      needsPasswordChange: true, // Precisa trocar senha no primeiro login
       createdByInstructor: instructor,
     });
-    return this.membersRepository.save(member);
+    const savedMember = await this.membersRepository.save(member);
+
+    // Criar a anamnese se houver dados relacionados
+    if (mainGoal || experienceLevel || weeklyFrequency || healthNotes) {
+      const anamnesis = new Anamnesis();
+      anamnesis.member = savedMember;
+      anamnesis.mainGoal = mainGoal || 'Não informado';
+      anamnesis.experienceLevel = experienceLevel || 'Não informado';
+      anamnesis.preferredTime = 'Não informado'; // Pode ser adicionado no frontend depois
+      anamnesis.weeklyFrequency = weeklyFrequency || 'Não informado';
+      anamnesis.healthProblems = healthNotes || null;
+      anamnesis.medicalRestrictions = null;
+      anamnesis.medication = null;
+      anamnesis.injuries = null;
+      anamnesis.activityLevel = 'Não informado';
+      anamnesis.smokingStatus = 'Não informado';
+      anamnesis.sleepHours = 'Não informado';
+      await this.anamnesisRepository.save(anamnesis);
+    }
+
+    // Retornar o membro com a anamnese carregada
+    return this.membersRepository.findOne({
+      where: { id: savedMember.id },
+      relations: ['createdByInstructor', 'anamnesis'],
+    });
   }
 
   findAll() {
     return this.membersRepository.find({
-      relations: ['createdByInstructor'],
+      relations: ['createdByInstructor', 'anamnesis'],
     });
+  }
+
+  findByInstructor(instructorId: string) {
+    return this.membersRepository.find({
+      where: { createdByInstructor: { id: instructorId } },
+      relations: ['createdByInstructor', 'anamnesis'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findOne(id: string) {
+    const member = await this.membersRepository.findOne({
+      where: { id },
+      relations: ['createdByInstructor', 'anamnesis'],
+    });
+
+    if (!member) {
+      throw new NotFoundException('Membro não encontrado');
+    }
+
+    return member;
+  }
+
+  async getMedicalInfo(id: string) {
+    const member = await this.membersRepository.findOne({
+      where: { id },
+      relations: ['anamnesis'],
+    });
+
+    if (!member) {
+      throw new NotFoundException('Membro não encontrado');
+    }
+
+    // Calcular idade
+    const birthDate = new Date(member.birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    // Converter anamnese para formato esperado pelo frontend
+    const anamnesis = member.anamnesis;
+    
+    return {
+      studentId: member.id,
+      studentName: member.name,
+      age,
+      weight: member.weight ? Number(member.weight) : 0,
+      height: member.height ? Number(member.height) : 0,
+      bloodPressure: 'Não informado',
+      heartCondition: anamnesis?.healthProblems?.toLowerCase().includes('cardíaco') || 
+                      anamnesis?.healthProblems?.toLowerCase().includes('coração') || false,
+      injuries: anamnesis?.injuries ? [anamnesis.injuries] : [],
+      restrictions: anamnesis?.medicalRestrictions ? [anamnesis.medicalRestrictions] : [],
+      notes: anamnesis?.healthProblems || anamnesis?.medicalRestrictions || 'Nenhuma observação',
+    };
+  }
+
+  async findByEmail(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const member = await this.membersRepository
+      .createQueryBuilder('member')
+      .where('LOWER(member.email) = :email', { email: normalizedEmail })
+      .getOne();
+    
+    return member;
+  }
+
+  async validateMember(email: string, password: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const member = await this.findByEmail(normalizedEmail);
+    
+    if (!member || !member.passwordHash) {
+      console.log(`[MembersService] Membro não encontrado ou sem senha: ${normalizedEmail}`);
+      return null;
+    }
+
+    // Verificar se a senha fornecida corresponde ao hash armazenado
+    const isValid = await bcrypt.compare(password, member.passwordHash);
+    
+    if (!isValid) {
+      console.log(`[MembersService] Senha incorreta para email: ${normalizedEmail}`);
+      return null;
+    }
+
+    console.log(`[MembersService] Login válido para membro: ${member.name} (${member.email})`);
+    return member;
+  }
+
+  async changePassword(memberId: string, newPassword: string) {
+    const member = await this.membersRepository.findOne({ where: { id: memberId } });
+    
+    if (!member) {
+      throw new NotFoundException('Membro não encontrado');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    member.passwordHash = passwordHash;
+    member.needsPasswordChange = false;
+    
+    return this.membersRepository.save(member);
+  }
+
+  async addXP(memberId: string, xpAmount: number) {
+    const member = await this.membersRepository.findOne({ where: { id: memberId } });
+    
+    if (!member) {
+      throw new NotFoundException('Membro não encontrado');
+    }
+
+    // Adicionar XP
+    member.xp = Number(member.xp) + xpAmount;
+
+    // Calcular novo level (cada level precisa de level * 50 XP)
+    // Ex: Level 1 = 0-50 XP, Level 2 = 51-100 XP, Level 3 = 101-150 XP, etc.
+    const newLevel = Math.floor(member.xp / 50) + 1;
+    member.level = newLevel;
+
+    return this.membersRepository.save(member);
+  }
+
+  async getRanking(type: 'monthly' | 'total') {
+    let query = this.membersRepository
+      .createQueryBuilder('member')
+      .select([
+        'member.id',
+        'member.name',
+        'member.xp',
+        'member.level',
+      ])
+      .orderBy('member.xp', 'DESC')
+      .limit(50);
+
+    // Se for ranking mensal, filtrar apenas XP ganho no mês atual
+    if (type === 'monthly') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      
+      // Por enquanto, retornar todos ordenados por XP total
+      // Futuramente pode ser implementado um sistema de XP mensal
+    }
+
+    const members = await query.getMany();
+
+    // Converter para formato RankingUser
+    return members.map((member, index) => ({
+      id: member.id,
+      name: member.name,
+      points: Number(member.xp),
+      level: member.level,
+      position: index + 1,
+    }));
   }
 }
 

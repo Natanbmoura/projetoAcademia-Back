@@ -26,7 +26,7 @@ export class Instructor {
   @Column()
   cpf: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   passwordHash: string;
 
   
