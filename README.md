@@ -23,76 +23,410 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Sistema de gestão de academia desenvolvido com [NestJS](https://github.com/nestjs/nest) - um framework TypeScript progressivo para construção de aplicações server-side eficientes e escaláveis.
 
-## Project setup
+Este projeto oferece uma API REST completa para gerenciamento de academias, incluindo funcionalidades de autenticação, cadastro de instrutores e membros, criação de treinos, exercícios, histórico de treinos e sistema de conquistas.
+
+## Equipe do Bolsa Futuro Digital - Aponti PE - Backend com JS
+
+- Ítalo Braz
+- Leticia Gabriella
+- Débora Késsia
+- Bruna Almeida
+- Natan Moura
+- Maria Cecilia 
+
+## Tecnologias
+
+- **Framework**: NestJS 11
+- **Linguagem**: TypeScript 5.7
+- **ORM**: TypeORM 0.3
+- **Banco de Dados**: MySQL
+- **Autenticação**: JWT (Passport)
+- **Validação**: class-validator, class-transformer
+- **Segurança**: bcrypt para hash de senhas
+
+## Módulos do Sistema
+
+- **Auth**: Autenticação e autorização com JWT
+- **Instructors**: Gerenciamento de instrutores
+- **Members**: Gerenciamento de membros/alunos
+- **Anamneses**: Anamnese dos membros
+- **Exercises**: Cadastro e gerenciamento de exercícios
+- **Workouts**: Criação e gerenciamento de treinos
+- **WorkoutItems**: Itens que compõem os treinos
+- **WorkoutHistory**: Histórico de treinos realizados
+- **Achievements**: Sistema de conquistas
+
+## Pré-requisitos
+
+- Node.js (versão 18 ou superior)
+- MySQL (versão 8.0 ou superior)
+- npm ou yarn
+
+## Configuração do Projeto
+
+### 1. Instalar dependências
 
 ```bash
 $ npm install
 ```
 
-## Compile and run the project
+### 2. Configurar variáveis de ambiente
+
+Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=root
+DB_NAME=academia
+DB_SYNC=true
+
+# JWT
+JWT_SECRET=your-secret-key-here
+
+# Server
+PORT=3000
+```
+
+> **⚠️ Importante**: Em produção, defina `DB_SYNC=false` e use migrations. Altere `JWT_SECRET` para uma chave segura.
+
+### 3. Criar banco de dados
+
+Crie o banco de dados MySQL:
+
+```sql
+CREATE DATABASE academia;
+```
+
+## Executando o Projeto
 
 ```bash
-# development
+# desenvolvimento
 $ npm run start
 
-# watch mode
+# modo watch (recompila automaticamente)
 $ npm run start:dev
 
-# production mode
+# modo debug
+$ npm run start:debug
+
+# produção
 $ npm run start:prod
 ```
 
-## Run tests
+A aplicação estará disponível em `http://localhost:3000` (ou na porta definida em `PORT`).
+
+## Scripts Disponíveis
 
 ```bash
-# unit tests
+# Build
+$ npm run build
+
+# Formatação de código
+$ npm run format
+
+# Linting
+$ npm run lint
+
+# Testes unitários
 $ npm run test
 
-# e2e tests
+# Testes em modo watch
+$ npm run test:watch
+
+# Cobertura de testes
+$ npm run test:cov
+
+# Testes e2e
 $ npm run test:e2e
 
-# test coverage
+# Seed de instrutor inicial
+$ npm run seed:instructor
+```
+
+## Estrutura da API
+
+A API utiliza o prefixo global `/api` para todas as rotas.
+
+### Autenticação
+
+- **POST** `/api/auth/login` - Login de instrutor
+
+### Instrutores
+
+- **GET** `/api/instructors` - Listar instrutores
+- **POST** `/api/instructors` - Criar instrutor
+
+### Membros
+
+- **GET** `/api/members` - Listar membros (requer autenticação)
+- **POST** `/api/members` - Criar membro (requer autenticação)
+
+### Outros Endpoints
+
+Consulte o arquivo `ROUTES.md` para documentação completa de todas as rotas disponíveis.
+
+## Fluxo de Uso
+
+1. Criar um instrutor (admin) via `POST /api/instructors`
+2. Fazer login via `POST /api/auth/login` e obter o `accessToken`
+3. Usar o token (Bearer) nas requisições protegidas para gerenciar membros, treinos, etc.
+
+## Estrutura do Projeto
+
+```
+projetoAcademia-Back/
+├── src/
+│   ├── achievements/          # Sistema de conquistas
+│   ├── anamneses/             # Anamnese dos membros
+│   ├── auth/                  # Autenticação e autorização
+│   │   ├── guards/            # Guards JWT
+│   │   └── dto/               # DTOs de autenticação
+│   ├── exercises/             # Exercícios
+│   ├── instructors/           # Instrutores
+│   ├── members/               # Membros/Alunos
+│   ├── workout-history/       # Histórico de treinos
+│   ├── workout-items/         # Itens dos treinos
+│   ├── workouts/              # Treinos
+│   ├── scripts/               # Scripts utilitários
+│   ├── app.module.ts          # Módulo principal
+│   └── main.ts                # Arquivo de inicialização
+├── test/                      # Testes e2e
+├── dist/                      # Build compilado
+├── .env                       # Variáveis de ambiente (não versionado)
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+## Modelo de Dados
+
+### Entidades Principais
+
+- **Instructor**: Instrutores da academia (admin)
+  - Campos: id, name, email, cpf, passwordHash, emergencyPhone, theme
+  - Relacionamentos: possui muitos Members e Workouts
+
+- **Member**: Membros/Alunos da academia
+  - Campos: id, name, birthDate, phone, email, emergencyPhone, emergencyEmail, weight, height, gender, xp, level, currentStreak, theme, notificações
+  - Relacionamentos: pertence a um Instructor, possui uma Anamnesis
+
+- **Anamnesis**: Anamnese do membro
+  - Campos: mainGoal, experienceLevel, preferredTime, weeklyFrequency, healthProblems, medicalRestrictions, medication, injuries, activityLevel, smokingStatus, sleepHours
+  - Relacionamento: 1:1 com Member
+
+- **Exercise**: Exercícios disponíveis
+  - Campos: id, name, muscleGroup, description
+
+- **Workout**: Treinos criados
+  - Campos: id, name, description, instructorId, memberId
+  - Relacionamentos: pertence a um Instructor e um Member, possui muitos WorkoutItems
+
+- **WorkoutItem**: Itens que compõem um treino
+  - Campos: id, workoutId, exerciseId, sets, reps, weight, restTime, observations
+  - Relacionamentos: pertence a um Workout e um Exercise
+
+- **WorkoutHistory**: Histórico de treinos realizados
+  - Campos: id, workoutId, memberId, completedAt, notes
+  - Relacionamentos: pertence a um Workout e um Member
+
+- **Achievement**: Conquistas do sistema
+  - Campos: id, name, description, icon, xpReward, requirement
+  - Relacionamentos: muitos-para-muitos com Members
+
+## Autenticação e Segurança
+
+### JWT (JSON Web Token)
+
+A aplicação utiliza JWT para autenticação. O fluxo é:
+
+1. **Login**: `POST /api/auth/login`
+   - Recebe `id` (do instrutor) e `password`
+   - Retorna `accessToken` e `instructorId`
+
+2. **Uso do Token**: 
+   - Adicione o header: `Authorization: Bearer <accessToken>`
+   - O token é válido por um período determinado (configurado no JWT_SECRET)
+
+### Proteção de Rotas
+
+Rotas protegidas utilizam o `JwtAuthGuard` que valida o token JWT. Exemplos:
+- Criar/Listar membros
+- Criar/Listar treinos
+- Gerenciar exercícios
+- Histórico de treinos
+
+### Hash de Senhas
+
+As senhas são criptografadas usando `bcrypt` antes de serem armazenadas no banco de dados.
+
+## Exemplos de Uso da API
+
+### 1. Criar Instrutor
+
+```bash
+POST http://localhost:3000/api/instructors
+Content-Type: application/json
+
+{
+  "name": "João Silva",
+  "email": "joao@academia.com",
+  "cpf": "12345678900",
+  "password": "senhaSegura123"
+}
+```
+
+**Resposta:**
+```json
+{
+  "id": "uuid-do-instrutor",
+  "name": "João Silva",
+  "email": "joao@academia.com",
+  "cpf": "12345678900",
+  "createdAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+### 2. Login
+
+```bash
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "id": "uuid-do-instrutor",
+  "password": "senhaSegura123"
+}
+```
+
+**Resposta:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "instructorId": "uuid-do-instrutor"
+}
+```
+
+### 3. Criar Membro (requer autenticação)
+
+```bash
+POST http://localhost:3000/api/members
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "name": "Maria Santos",
+  "birthDate": "1995-05-15",
+  "phone": "11999999999",
+  "email": "maria@email.com",
+  "emergencyPhone": "11888888888",
+  "emergencyEmail": "emergencia@email.com"
+}
+```
+
+### 4. Listar Membros (requer autenticação)
+
+```bash
+GET http://localhost:3000/api/members
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+## Configurações Adicionais
+
+### CORS
+
+A aplicação está configurada para aceitar requisições dos seguintes origens:
+- `http://localhost:5173` (Vite default)
+- `http://localhost:3000`
+- `http://localhost:5174`
+
+Para adicionar novas origens, edite o arquivo `src/main.ts`.
+
+### Validação
+
+A aplicação utiliza `class-validator` para validação automática de DTOs. O `ValidationPipe` global está configurado com:
+- `whitelist: true` - Remove propriedades não definidas no DTO
+- `forbidNonWhitelisted: true` - Retorna erro se propriedades extras forem enviadas
+- `transform: true` - Transforma automaticamente os tipos
+
+## Seed de Dados
+
+Para criar um instrutor inicial, utilize o script:
+
+```bash
+$ npm run seed:instructor
+```
+
+Este script cria um instrutor padrão no banco de dados.
+
+## Testes
+
+```bash
+# testes unitários
+$ npm run test
+
+# testes em modo watch
+$ npm run test:watch
+
+# testes e2e
+$ npm run test:e2e
+
+# cobertura de testes
 $ npm run test:cov
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Build para Produção
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Compilar o projeto
+$ npm run build
+
+# Executar em produção
+$ npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+O build será gerado na pasta `dist/`.
 
-## Resources
+## Troubleshooting
 
-Check out a few resources that may come in handy when working with NestJS:
+### Erro de conexão com o banco de dados
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- Verifique se o MySQL está rodando
+- Confirme as credenciais no arquivo `.env`
+- Verifique se o banco de dados `academia` foi criado
 
-## Support
+### Erro de autenticação
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- Verifique se o token JWT está sendo enviado corretamente no header
+- Confirme se o `JWT_SECRET` está configurado no `.env`
+- Verifique se o token não expirou
 
-## Stay in touch
+### Erro de CORS
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- Adicione a origem do frontend no array de `origin` em `src/main.ts`
+- Verifique se o `credentials: true` está configurado se necessário
 
-## License
+### Erro de validação
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- Verifique se todos os campos obrigatórios estão sendo enviados
+- Confirme os tipos de dados (ex: `birthDate` deve ser uma string no formato `YYYY-MM-DD`)
+
+## Documentação Adicional
+
+Para documentação completa de todas as rotas disponíveis, consulte o arquivo [`ROUTES.md`](./ROUTES.md).
+
+## Contribuindo
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## Licença
+
+Este projeto é privado e não possui licença pública.
