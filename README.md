@@ -23,7 +23,7 @@
 
 ## Description
 
-Sistema de gestão de academia desenvolvido com [NestJS](https://github.com/nestjs/nest) - um framework TypeScript progressivo para construção de aplicações server-side eficientes e escaláveis.
+Sistema de gestão da academia Forma+ desenvolvido com [NestJS](https://github.com/nestjs/nest) - um framework TypeScript progressivo para construção de aplicações server-side eficientes e escaláveis.
 
 Este projeto oferece uma API REST completa para gerenciamento de academias, incluindo funcionalidades de autenticação, cadastro de instrutores e membros, criação de treinos, exercícios, histórico de treinos e sistema de conquistas.
 
