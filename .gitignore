@@ -103,3 +103,9 @@ ormconfig.ts
 # Local development
 .local
 local/
+
+
+# Arquivos de tutorial
+CRIAR_PROFESSOR.md
+CRIAR_TABELAS.md
+DEPLOY.md

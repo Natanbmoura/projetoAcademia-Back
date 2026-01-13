@@ -41,10 +41,11 @@ Este projeto oferece uma API REST completa para gerenciamento de academias, incl
 - **Framework**: NestJS 11
 - **Linguagem**: TypeScript 5.7
 - **ORM**: TypeORM 0.3
-- **Banco de Dados**: MySQL
+- **Banco de Dados**: PostgreSQL (com suporte ao Neon Database)
 - **Autenticação**: JWT (Passport)
 - **Validação**: class-validator, class-transformer
 - **Segurança**: bcrypt para hash de senhas
+- **Deploy**: Render (configurado)
 
 ## Módulos do Sistema
 
@@ -61,7 +62,7 @@ Este projeto oferece uma API REST completa para gerenciamento de academias, incl
 ## Pré-requisitos
 
 - Node.js (versão 18 ou superior)
-- MySQL (versão 8.0 ou superior)
+- PostgreSQL (ou use Neon Database em nuvem)
 - npm ou yarn
 
 ## Configuração do Projeto
@@ -76,27 +77,50 @@ $ npm install
 
 Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 
+#### Opção A: Usando DATABASE_URL (Recomendado - formato Neon)
+
 ```env
-# Database
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASS=root
-DB_NAME=academia
+# Database - Use DATABASE_URL (formato do Neon) ou variáveis individuais
+DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
+
+# Ou use variáveis individuais:
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_USER=postgres
+# DB_PASS=password
+# DB_NAME=academia
+# DB_SSL=true
+
+# Sincronização do banco (use false em produção)
 DB_SYNC=true
 
-# JWT
+# JWT Secret - Use uma chave segura
 JWT_SECRET=your-secret-key-here
 
-# Server
+# Porta do servidor
 PORT=3000
+
+# CORS - URLs permitidas separadas por vírgula
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
-> **⚠️ Importante**: Em produção, defina `DB_SYNC=false` e use migrations. Altere `JWT_SECRET` para uma chave segura.
+> **⚠️ Importante**: 
+> - Em produção, defina `DB_SYNC=false` para evitar perda de dados
+> - Altere `JWT_SECRET` para uma chave segura
+> - Para desenvolvimento local, use `DB_SYNC=true` para criar tabelas automaticamente
 
 ### 3. Criar banco de dados
 
-Crie o banco de dados MySQL:
+#### Opção A: Usando Neon Database (Recomendado)
+
+1. Acesse [Neon Console](https://console.neon.tech)
+2. Crie um novo projeto
+3. Copie a string de conexão (Connection String)
+4. Use no `DATABASE_URL` do arquivo `.env`
+
+#### Opção B: PostgreSQL Local
+
+Crie o banco de dados PostgreSQL:
 
 ```sql
 CREATE DATABASE academia;
@@ -173,8 +197,10 @@ Consulte o arquivo `ROUTES.md` para documentação completa de todas as rotas di
 ## Fluxo de Uso
 
 1. Criar um instrutor (admin) via `POST /api/instructors`
-2. Fazer login via `POST /api/auth/login` e obter o `accessToken`
+2. Fazer login via `POST /api/auth/login` usando `email` e `password`, obter o `accessToken`
 3. Usar o token (Bearer) nas requisições protegidas para gerenciar membros, treinos, etc.
+
+> **Dica**: Use o script `npm run seed:instructor` para criar um instrutor padrão rapidamente.
 
 ## Estrutura do Projeto
 
@@ -245,8 +271,8 @@ projetoAcademia-Back/
 A aplicação utiliza JWT para autenticação. O fluxo é:
 
 1. **Login**: `POST /api/auth/login`
-   - Recebe `id` (do instrutor) e `password`
-   - Retorna `accessToken` e `instructorId`
+   - Recebe `email` (ou `id`) e `password`
+   - Retorna `accessToken`, `instructorId` e dados do `instructor`
 
 2. **Uso do Token**: 
    - Adicione o header: `Authorization: Bearer <accessToken>`
@@ -298,7 +324,7 @@ POST http://localhost:3000/api/auth/login
 Content-Type: application/json
 
 {
-  "id": "uuid-do-instrutor",
+  "email": "joao@academia.com",
   "password": "senhaSegura123"
 }
 ```
@@ -307,9 +333,16 @@ Content-Type: application/json
 ```json
 {
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "instructorId": "uuid-do-instrutor"
+  "instructorId": "uuid-do-instrutor",
+  "instructor": {
+    "id": "uuid-do-instrutor",
+    "name": "João Silva",
+    "email": "joao@academia.com"
+  }
 }
 ```
+
+> **Nota**: O login aceita `email` ou `id` do instrutor.
 
 ### 3. Criar Membro (requer autenticação)
 
@@ -339,12 +372,19 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ### CORS
 
-A aplicação está configurada para aceitar requisições dos seguintes origens:
-- `http://localhost:5173` (Vite default)
-- `http://localhost:3000`
-- `http://localhost:5174`
+A aplicação está configurada para aceitar requisições de origens definidas na variável de ambiente `ALLOWED_ORIGINS`.
 
-Para adicionar novas origens, edite o arquivo `src/main.ts`.
+**Desenvolvimento local:**
+```env
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:5174
+```
+
+**Produção:**
+```env
+ALLOWED_ORIGINS=https://seu-frontend.firebaseapp.com,https://seu-frontend.web.app,http://localhost:5173
+```
+
+As origens devem ser separadas por vírgula, sem espaços. O CORS é configurado automaticamente via variável de ambiente.
 
 ### Validação
 
@@ -391,13 +431,40 @@ $ npm run start:prod
 
 O build será gerado na pasta `dist/`.
 
+## Deploy em Produção
+
+### Render (Configurado)
+
+O projeto está configurado para deploy no Render. Consulte os guias:
+
+- **Deploy no Render**: Veja instruções em `CRIAR_TABELAS.md` e `CRIAR_PROFESSOR.md`
+- **Configuração**: O arquivo `render.yaml` está pronto para uso
+
+### Variáveis de Ambiente no Render
+
+Configure as seguintes variáveis:
+
+```
+DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
+JWT_SECRET=sua-chave-secreta-segura
+DB_SYNC=false
+ALLOWED_ORIGINS=https://seu-frontend.firebaseapp.com,https://seu-frontend.web.app,http://localhost:5173
+PORT=10000
+```
+
+> **⚠️ IMPORTANTE**: 
+> - Use `DB_SYNC=false` em produção
+> - Para criar as tabelas pela primeira vez, altere temporariamente para `DB_SYNC=true`, aguarde a criação, e depois volte para `false`
+
 ## Troubleshooting
 
 ### Erro de conexão com o banco de dados
 
-- Verifique se o MySQL está rodando
-- Confirme as credenciais no arquivo `.env`
-- Verifique se o banco de dados `academia` foi criado
+- Verifique se o PostgreSQL está rodando (ou se o Neon Database está acessível)
+- Confirme as credenciais no arquivo `.env` ou `DATABASE_URL`
+- Verifique se o banco de dados foi criado
+- Para Neon, certifique-se de que o SSL está habilitado (`sslmode=require`)
+- Verifique se a string de conexão está completa e correta
 
 ### Erro de autenticação
 
@@ -407,8 +474,10 @@ O build será gerado na pasta `dist/`.
 
 ### Erro de CORS
 
-- Adicione a origem do frontend no array de `origin` em `src/main.ts`
-- Verifique se o `credentials: true` está configurado se necessário
+- Adicione a URL do frontend na variável `ALLOWED_ORIGINS` (separadas por vírgula)
+- Certifique-se de que não há espaços entre as URLs
+- Verifique se está usando `https://` para URLs de produção
+- Reinicie o servidor após alterar a variável
 
 ### Erro de validação
 
@@ -417,7 +486,9 @@ O build será gerado na pasta `dist/`.
 
 ## Documentação Adicional
 
-Para documentação completa de todas as rotas disponíveis, consulte o arquivo [`ROUTES.md`](./ROUTES.md).
+- **Rotas da API**: Consulte o arquivo [`ROUTES.md`](./ROUTES.md) para documentação completa de todas as rotas
+- **Criar Tabelas**: Veja [`CRIAR_TABELAS.md`](./CRIAR_TABELAS.md) para instruções sobre criação de tabelas no Neon
+- **Criar Professor**: Veja [`CRIAR_PROFESSOR.md`](./CRIAR_PROFESSOR.md) para criar o instrutor padrão
 
 ## Contribuindo
 
