@@ -19,16 +19,43 @@ import { AchievementsModule } from './achievements/achievements.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'mysql',
-        host: config.get<string>('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.get<string>('DB_USER'),
-        password: config.get<string>('DB_PASS'),
-        database: config.get<string>('DB_NAME'),
-        autoLoadEntities: true,
-        synchronize: config.get<string>('DB_SYNC', 'true') === 'true',
-      }),
+      useFactory: (config: ConfigService) => {
+        // Suporta DATABASE_URL (formato do Neon) ou variáveis individuais
+        const databaseUrl = config.get<string>('DATABASE_URL');
+        
+        if (databaseUrl) {
+          // Parse da URL de conexão do PostgreSQL
+          const url = new URL(databaseUrl);
+          return {
+            type: 'postgres',
+            host: url.hostname,
+            port: parseInt(url.port) || 5432,
+            username: url.username,
+            password: url.password,
+            database: url.pathname.slice(1), // Remove a barra inicial
+            ssl: {
+              rejectUnauthorized: false, // Necessário para Neon
+            },
+            autoLoadEntities: true,
+            synchronize: config.get<string>('DB_SYNC', 'false') === 'true',
+          };
+        }
+        
+        // Fallback para variáveis individuais
+        return {
+          type: 'postgres',
+          host: config.get<string>('DB_HOST', 'localhost'),
+          port: config.get<number>('DB_PORT', 5432),
+          username: config.get<string>('DB_USER'),
+          password: config.get<string>('DB_PASS'),
+          database: config.get<string>('DB_NAME'),
+          ssl: config.get<string>('DB_SSL') === 'true' ? {
+            rejectUnauthorized: false,
+          } : false,
+          autoLoadEntities: true,
+          synchronize: config.get<string>('DB_SYNC', 'false') === 'true',
+        };
+      },
     }),
     InstructorsModule,
     AuthModule,
