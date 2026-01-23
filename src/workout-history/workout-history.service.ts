@@ -112,10 +112,7 @@ export class WorkoutHistoryService {
     await this.membersService.addXP(memberId, xpEarned);
     console.log(`[WorkoutHistory] XP adicionado com sucesso`);
 
-    // 5. Calcular e atualizar streak
-    await this.updateStreak(memberId);
-
-    // 6. Salvar Histórico
+    // 5. Salvar Histórico PRIMEIRO (antes de calcular streak)
     const now = new Date();
     const history = this.historyRepository.create({
       member,
@@ -126,6 +123,10 @@ export class WorkoutHistoryService {
     });
 
     const savedHistory = await this.historyRepository.save(history);
+    console.log(`[WorkoutHistory] Histórico salvo com ID: ${savedHistory.id}`);
+
+    // 6. Calcular e atualizar streak DEPOIS de salvar o histórico
+    await this.updateStreak(memberId);
 
     // 7. Verificar e desbloquear conquistas automaticamente
     try {
@@ -156,8 +157,12 @@ export class WorkoutHistoryService {
 
   // Atualizar streak do membro baseado no histórico de treinos
   private async updateStreak(memberId: string) {
+    console.log(`[WorkoutHistory] Calculando streak para membro ${memberId}`);
     const member = await this.membersRepository.findOne({ where: { id: memberId } });
-    if (!member) return;
+    if (!member) {
+      console.error(`[WorkoutHistory] Membro não encontrado ao calcular streak: ${memberId}`);
+      return;
+    }
 
     // Buscar histórico de treinos ordenado por data (mais recente primeiro)
     const history = await this.historyRepository.find({
@@ -165,7 +170,10 @@ export class WorkoutHistoryService {
       order: { endTime: 'DESC' },
     });
 
+    console.log(`[WorkoutHistory] Histórico encontrado: ${history.length} treinos`);
+
     if (history.length === 0) {
+      console.log(`[WorkoutHistory] Nenhum histórico, streak = 0`);
       member.currentStreak = 0;
       await this.membersRepository.save(member);
       return;
@@ -183,8 +191,11 @@ export class WorkoutHistoryService {
       return workoutDate.getTime() === today.getTime();
     });
 
+    console.log(`[WorkoutHistory] Treinos hoje: ${todayWorkouts.length}`);
+
     if (todayWorkouts.length === 0) {
       // Não treinou hoje, streak = 0
+      console.log(`[WorkoutHistory] Não treinou hoje, streak = 0`);
       member.currentStreak = 0;
       await this.membersRepository.save(member);
       return;
@@ -195,7 +206,11 @@ export class WorkoutHistoryService {
     let checkDate = new Date(today);
     checkDate.setDate(checkDate.getDate() - 1);
 
-    while (true) {
+    // Limitar a busca a 365 dias para evitar loop infinito
+    let daysChecked = 0;
+    const maxDays = 365;
+
+    while (daysChecked < maxDays) {
       const dayWorkouts = history.filter((h) => {
         const workoutDate = new Date(h.endTime);
         workoutDate.setHours(0, 0, 0, 0);
@@ -205,12 +220,15 @@ export class WorkoutHistoryService {
       if (dayWorkouts.length > 0) {
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
+        daysChecked++;
       } else {
         break;
       }
     }
 
+    console.log(`[WorkoutHistory] Streak calculado: ${streak} dias`);
     member.currentStreak = streak;
     await this.membersRepository.save(member);
+    console.log(`[WorkoutHistory] Streak salvo: ${member.currentStreak}`);
   }
 }

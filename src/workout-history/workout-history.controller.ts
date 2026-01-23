@@ -26,11 +26,18 @@ export class WorkoutHistoryController {
     console.log('[WorkoutHistoryController] User do token:', req.user);
     
     // Pega o memberId do token (se for aluno) ou do body (se for instrutor)
+    // O JWT strategy retorna { memberId, email, role: 'member' } para alunos
     const memberId = req.user?.memberId || req.body.memberId || req.user?.sub;
     
     if (!memberId) {
       console.error('[WorkoutHistoryController] Member ID não encontrado');
+      console.error('[WorkoutHistoryController] req.user:', JSON.stringify(req.user, null, 2));
       throw new Error('Member ID não encontrado. Faça login novamente.');
+    }
+    
+    if (!dto.workoutId) {
+      console.error('[WorkoutHistoryController] Workout ID não encontrado no body');
+      throw new Error('Workout ID é obrigatório.');
     }
     
     console.log(`[WorkoutHistoryController] Usando memberId: ${memberId}, workoutId: ${dto.workoutId}`);
