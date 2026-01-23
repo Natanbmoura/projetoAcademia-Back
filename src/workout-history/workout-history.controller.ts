@@ -25,9 +25,10 @@ export class WorkoutHistoryController {
     console.log('[WorkoutHistoryController] Body recebido:', JSON.stringify(dto, null, 2));
     console.log('[WorkoutHistoryController] User do token:', JSON.stringify(req.user, null, 2));
     
-    // Pega o memberId do token (se for aluno) ou do body (se for instrutor)
+    // Pega o memberId APENAS do token JWT (não do body)
     // O JWT strategy retorna { memberId, email, role: 'member' } para alunos
-    let memberId = req.user?.memberId || req.body.memberId || req.user?.sub;
+    // O DTO não aceita memberId no body para segurança
+    let memberId = req.user?.memberId || req.user?.sub;
     
     // Se ainda não encontrou, tentar extrair do sub se for um ID de membro
     if (!memberId && req.user?.sub) {
