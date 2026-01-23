@@ -7,6 +7,7 @@ import { Member } from '../members/entities/member.entity';
 import { Instructor } from '../instructors/entities/instructor.entity';
 import { WorkoutItem } from '../workout-items/entities/workout-item.entity';
 import { Exercise } from '../exercises/entities/exercise.entity';
+import { WorkoutHistory } from '../workout-history/entities/workout-history.entity';
 
 @Injectable()
 export class WorkoutsService {
@@ -21,6 +22,8 @@ export class WorkoutsService {
     private readonly workoutItemsRepository: Repository<WorkoutItem>,
     @InjectRepository(Exercise)
     private readonly exercisesRepository: Repository<Exercise>,
+    @InjectRepository(WorkoutHistory)
+    private readonly workoutHistoryRepository: Repository<WorkoutHistory>,
   ) {}
 
   async create(dto: CreateWorkoutDto, instructorId: string) {
@@ -133,7 +136,9 @@ export class WorkoutsService {
     });
 
     for (const existingWorkout of existingWorkouts) {
-      // Deletar workout items primeiro
+      // Deletar histórico de treinos primeiro (para evitar erro de foreign key)
+      await this.workoutHistoryRepository.delete({ workout: { id: existingWorkout.id } });
+      // Deletar workout items
       await this.workoutItemsRepository.delete({ workout: { id: existingWorkout.id } });
       // Depois deletar o workout
       await this.workoutsRepository.delete(existingWorkout.id);
