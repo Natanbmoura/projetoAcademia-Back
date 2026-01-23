@@ -69,6 +69,9 @@ export class WorkoutHistoryService {
     }
 
     // 3. Verificar se já completou qualquer treino hoje (para ganhar XP apenas 1 vez por dia)
+    // IMPORTANTE: O aluno pode completar vários treinos (A, B, C, etc.) no mesmo dia,
+    // mas só ganha XP do primeiro treino completado. Os demais treinos são registrados
+    // no histórico mas sem ganhar XP adicional.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -79,17 +82,29 @@ export class WorkoutHistoryService {
       .where('history.memberId = :memberId', { memberId })
       .andWhere('history.endTime >= :today', { today })
       .andWhere('history.endTime < :tomorrow', { tomorrow })
+      .andWhere('history.xpEarned > 0') // Verificar apenas treinos que ganharam XP
       .getOne();
 
     if (existingHistory) {
       // Já completou um treino hoje, não ganha XP novamente
+      // Mas ainda salva o histórico deste treino para contabilizar no contador
+      const now = new Date();
+      const history = this.historyRepository.create({
+        member,
+        workout,
+        startTime: now,
+        endTime: now,
+        xpEarned: 0, // Não ganhou XP porque já completou um treino hoje
+      });
+      const savedHistory = await this.historyRepository.save(history);
+      
       const updatedMember = await this.membersRepository.findOne({ where: { id: memberId } });
       if (!updatedMember) {
         throw new NotFoundException('Membro não encontrado.');
       }
       
       return {
-        id: existingHistory.id,
+        id: savedHistory.id,
         xpEarned: 0, // Não ganhou XP porque já completou um treino hoje
         member: {
           id: updatedMember.id,
