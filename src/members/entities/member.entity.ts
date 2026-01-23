@@ -70,6 +70,9 @@ export class Member {
   @Column({ default: true })
   needsPasswordChange: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  lastLoginAt: Date | null;
+
   @ManyToOne(() => Instructor, { nullable: false })
   @JoinColumn({ name: 'createdByInstructorId' })
   createdByInstructor: Instructor;

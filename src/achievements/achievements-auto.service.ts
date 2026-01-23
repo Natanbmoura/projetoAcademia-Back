@@ -1,0 +1,179 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Achievement } from './entities/achievement.entity';
+import { Member } from '../members/entities/member.entity';
+import { WorkoutHistory } from '../workout-history/entities/workout-history.entity';
+import { AchievementsService } from './achievements.service';
+
+@Injectable()
+export class AchievementsAutoService {
+  constructor(
+    @InjectRepository(Achievement)
+    private readonly achievementRepository: Repository<Achievement>,
+    @InjectRepository(Member)
+    private readonly memberRepository: Repository<Member>,
+    @InjectRepository(WorkoutHistory)
+    private readonly historyRepository: Repository<WorkoutHistory>,
+    private readonly achievementsService: AchievementsService,
+  ) {}
+
+  // Verifica e desbloqueia conquistas automaticamente após completar treino
+  async checkAndUnlockAchievements(memberId: string) {
+    const member = await this.memberRepository.findOne({ where: { id: memberId } });
+    if (!member) return;
+
+    // Buscar todas as conquistas
+    const allAchievements = await this.achievementRepository.find({
+      relations: ['members'],
+    });
+
+    // Buscar histórico de treinos do membro
+    const workoutHistory = await this.historyRepository.find({
+      where: { member: { id: memberId } },
+      order: { endTime: 'DESC' },
+    });
+
+    const totalWorkouts = workoutHistory.length;
+    const totalXP = Number(member.xp);
+    const currentLevel = member.level;
+    const currentStreak = member.currentStreak;
+
+    // Calcular exercícios completos (aproximação baseada em treinos)
+    const totalExercises = totalWorkouts * 5; // Estimativa: ~5 exercícios por treino
+
+    // Calcular dias únicos da semana atual
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const weekWorkouts = workoutHistory.filter((h) => {
+      const workoutDate = new Date(h.endTime);
+      return workoutDate >= startOfWeek;
+    });
+
+    const uniqueDaysThisWeek = new Set(
+      weekWorkouts.map((h) => {
+        const d = new Date(h.endTime);
+        return d.toDateString();
+      }),
+    ).size;
+
+    const unlockedAchievements: string[] = [];
+
+    for (const achievement of allAchievements) {
+      // Verificar se já tem a conquista
+      const alreadyHas = achievement.members.some((m) => m.id === memberId);
+      if (alreadyHas) continue;
+
+      let shouldUnlock = false;
+
+      // Verificar condições baseadas no título da conquista
+      const title = achievement.title.toLowerCase();
+
+      // Conquistas de treinos completos
+      if (title.includes('primeiro passo') && totalWorkouts >= 1) {
+        shouldUnlock = true;
+      } else if (title.includes('iniciante') && totalWorkouts >= 3) {
+        shouldUnlock = true;
+      } else if (title.includes('dedicação') && totalWorkouts >= 5) {
+        shouldUnlock = true;
+      } else if (title.includes('persistência') && totalWorkouts >= 10) {
+        shouldUnlock = true;
+      } else if (title.includes('guerreiro') && totalWorkouts >= 25) {
+        shouldUnlock = true;
+      }
+
+      // Conquistas de sequência (streak)
+      else if (title.includes('chama acesa') && currentStreak >= 3) {
+        shouldUnlock = true;
+      } else if (title.includes('semana forte') && currentStreak >= 7) {
+        shouldUnlock = true;
+      } else if (title.includes('mês de ferro') && currentStreak >= 30) {
+        shouldUnlock = true;
+      } else if (title.includes('disciplina') && currentStreak >= 15) {
+        shouldUnlock = true;
+      } else if (title.includes('lenda') && currentStreak >= 60) {
+        shouldUnlock = true;
+      }
+
+      // Conquistas de nível
+      else if (title.includes('nível 5') && currentLevel >= 5) {
+        shouldUnlock = true;
+      } else if (title.includes('nível 10') && currentLevel >= 10) {
+        shouldUnlock = true;
+      } else if (title.includes('nível 20') && currentLevel >= 20) {
+        shouldUnlock = true;
+      } else if (title.includes('nível 30') && currentLevel >= 30) {
+        shouldUnlock = true;
+      } else if (title.includes('mestre') && currentLevel >= 50) {
+        shouldUnlock = true;
+      }
+
+      // Conquistas de exercícios
+      else if (title.includes('força total') && totalExercises >= 50) {
+        shouldUnlock = true;
+      } else if (title.includes('máquina') && totalExercises >= 100) {
+        shouldUnlock = true;
+      } else if (title.includes('titã') && totalExercises >= 250) {
+        shouldUnlock = true;
+      } else if (title.includes('hércules') && totalExercises >= 500) {
+        shouldUnlock = true;
+      } else if (title.includes('invencível') && totalExercises >= 1000) {
+        shouldUnlock = true;
+      }
+
+      // Conquistas especiais
+      else if (title.includes('primeira semana') && uniqueDaysThisWeek >= 5) {
+        shouldUnlock = true;
+      } else if (title.includes('fim de semana ativo')) {
+        // Verificar se treinou no sábado e domingo da semana atual
+        const saturday = new Date(startOfWeek);
+        saturday.setDate(startOfWeek.getDate() + 6);
+        const sunday = new Date(startOfWeek);
+        sunday.setDate(startOfWeek.getDate() + 7);
+
+        const hasSaturday = weekWorkouts.some((h) => {
+          const d = new Date(h.endTime);
+          return d.toDateString() === saturday.toDateString();
+        });
+        const hasSunday = weekWorkouts.some((h) => {
+          const d = new Date(h.endTime);
+          return d.toDateString() === sunday.toDateString();
+        });
+
+        if (hasSaturday && hasSunday) {
+          shouldUnlock = true;
+        }
+      }
+
+      // Conquistas de XP
+      else if (title.includes('primeiros 100') && totalXP >= 100) {
+        shouldUnlock = true;
+      } else if (title.includes('mil pontos') && totalXP >= 1000) {
+        shouldUnlock = true;
+      } else if (title.includes('dez mil') && totalXP >= 10000) {
+        shouldUnlock = true;
+      } else if (title.includes('cem mil') && totalXP >= 100000) {
+        shouldUnlock = true;
+      } else if (title.includes('lenda viva') && totalXP >= 500000) {
+        shouldUnlock = true;
+      }
+
+      if (shouldUnlock) {
+        // Usar o serviço para desbloquear (evita duplicatas)
+        try {
+          await this.achievementsService.assignToMember(achievement.id, memberId);
+          unlockedAchievements.push(achievement.title);
+        } catch (error) {
+          // Ignorar se já tiver a conquista
+          console.error(`Erro ao desbloquear "${achievement.title}":`, error);
+        }
+      }
+    }
+
+    return unlockedAchievements;
+  }
+}
+

@@ -55,8 +55,17 @@ export class AchievementsService {
 
   // Lista só as conquistas de um aluno específico
   async findByMember(memberId: string) {
-    return this.achievementRepository.find({
-      where: { members: { id: memberId } }
-    });
+    // Buscar conquistas do membro
+    const achievements = await this.achievementRepository
+      .createQueryBuilder('achievement')
+      .innerJoin('achievement.members', 'member', 'member.id = :memberId', { memberId })
+      .getMany();
+
+    // Retornar com data de desbloqueio (usando data atual como aproximação)
+    // Nota: Para data exata, seria necessário uma tabela de junção customizada
+    return achievements.map((achievement) => ({
+      ...achievement,
+      unlockedAt: new Date().toISOString(),
+    }));
   }
 }

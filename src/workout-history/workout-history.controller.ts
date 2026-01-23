@@ -21,11 +21,19 @@ export class WorkoutHistoryController {
 
   @Post('complete')
   completeWorkout(@Body() dto: CompleteWorkoutDto, @Req() req) {
+    console.log('[WorkoutHistoryController] Recebendo requisição de completar treino');
+    console.log('[WorkoutHistoryController] Body:', dto);
+    console.log('[WorkoutHistoryController] User do token:', req.user);
+    
     // Pega o memberId do token (se for aluno) ou do body (se for instrutor)
-    const memberId = req.user?.memberId || req.body.memberId;
+    const memberId = req.user?.memberId || req.body.memberId || req.user?.sub;
+    
     if (!memberId) {
-      throw new Error('Member ID não encontrado');
+      console.error('[WorkoutHistoryController] Member ID não encontrado');
+      throw new Error('Member ID não encontrado. Faça login novamente.');
     }
+    
+    console.log(`[WorkoutHistoryController] Usando memberId: ${memberId}, workoutId: ${dto.workoutId}`);
     return this.historyService.completeWorkout(memberId, dto.workoutId);
   }
 }

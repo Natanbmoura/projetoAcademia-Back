@@ -98,7 +98,11 @@ export class MembersService {
       throw new NotFoundException('Membro não encontrado');
     }
 
-    return member;
+    // Adicionar informação de status ativo
+    return {
+      ...member,
+      isActive: this.isMemberActive(member),
+    };
   }
 
   async getMedicalInfo(id: string) {
@@ -165,8 +169,23 @@ export class MembersService {
       return null;
     }
 
+    // Atualizar último login
+    member.lastLoginAt = new Date();
+    await this.membersRepository.save(member);
+
     console.log(`[MembersService] Login válido para membro: ${member.name} (${member.email})`);
     return member;
+  }
+
+  // Verificar se membro está ativo (fez login nos últimos 30 dias)
+  isMemberActive(member: Member): boolean {
+    if (!member.lastLoginAt) {
+      return false;
+    }
+    const daysSinceLastLogin = Math.floor(
+      (new Date().getTime() - new Date(member.lastLoginAt).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    return daysSinceLastLogin <= 30;
   }
 
   async changePassword(memberId: string, newPassword: string) {
@@ -184,11 +203,17 @@ export class MembersService {
   }
 
   async addXP(memberId: string, xpAmount: number) {
+    console.log(`[MembersService] Adicionando ${xpAmount} XP ao membro ${memberId}`);
+    
     const member = await this.membersRepository.findOne({ where: { id: memberId } });
     
     if (!member) {
+      console.error(`[MembersService] Membro não encontrado: ${memberId}`);
       throw new NotFoundException('Membro não encontrado');
     }
+
+    const oldXP = Number(member.xp);
+    const oldLevel = member.level;
 
     // Adicionar XP
     member.xp = Number(member.xp) + xpAmount;
@@ -198,7 +223,12 @@ export class MembersService {
     const newLevel = Math.floor(member.xp / 50) + 1;
     member.level = newLevel;
 
-    return this.membersRepository.save(member);
+    console.log(`[MembersService] XP atualizado: ${oldXP} -> ${member.xp}, Level: ${oldLevel} -> ${newLevel}`);
+    
+    const savedMember = await this.membersRepository.save(member);
+    console.log(`[MembersService] Membro salvo com sucesso. XP final: ${savedMember.xp}, Level: ${savedMember.level}`);
+    
+    return savedMember;
   }
 
   async getRanking(type: 'monthly' | 'total') {
@@ -209,29 +239,30 @@ export class MembersService {
         'member.name',
         'member.xp',
         'member.level',
+        'member.lastLoginAt',
       ])
       .orderBy('member.xp', 'DESC')
       .limit(50);
 
-    // Se for ranking mensal, filtrar apenas XP ganho no mês atual
+    // Se for ranking mensal, filtrar apenas membros ativos (fizeram login nos últimos 30 dias)
     if (type === 'monthly') {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      // Por enquanto, retornar todos ordenados por XP total
-      // Futuramente pode ser implementado um sistema de XP mensal
+      query.andWhere('member.lastLoginAt >= :thirtyDaysAgo', { thirtyDaysAgo });
     }
 
     const members = await query.getMany();
 
-    // Converter para formato RankingUser
+    // Converter para formato RankingUser com status ativo/inativo
     return members.map((member, index) => ({
       id: member.id,
       name: member.name,
       points: Number(member.xp),
       level: member.level,
       position: index + 1,
+      isActive: this.isMemberActive(member),
+      lastLoginAt: member.lastLoginAt ? member.lastLoginAt.toISOString() : null,
     }));
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkoutHistory } from './entities/workout-history.entity';
@@ -6,6 +6,7 @@ import { CreateWorkoutHistoryDto } from './dto/create-workout-history.dto';
 import { Member } from '../members/entities/member.entity';
 import { Workout } from '../workouts/entities/workout.entity';
 import { MembersService } from '../members/members.service';
+import { AchievementsAutoService } from '../achievements/achievements-auto.service';
 
 @Injectable()
 export class WorkoutHistoryService {
@@ -17,6 +18,8 @@ export class WorkoutHistoryService {
     @InjectRepository(Workout)
     private readonly workoutsRepository: Repository<Workout>,
     private readonly membersService: MembersService,
+    @Inject(forwardRef(() => AchievementsAutoService))
+    private readonly achievementsAutoService: AchievementsAutoService,
   ) {}
 
   async create(dto: CreateWorkoutHistoryDto) {
@@ -53,13 +56,23 @@ export class WorkoutHistoryService {
   }
 
   async completeWorkout(memberId: string, workoutId: string) {
+    console.log(`[WorkoutHistory] Completando treino - MemberId: ${memberId}, WorkoutId: ${workoutId}`);
+    
     // 1. Validar Aluno
     const member = await this.membersRepository.findOne({ where: { id: memberId } });
-    if (!member) throw new NotFoundException('Aluno não encontrado.');
+    if (!member) {
+      console.error(`[WorkoutHistory] Aluno não encontrado: ${memberId}`);
+      throw new NotFoundException('Aluno não encontrado.');
+    }
+    console.log(`[WorkoutHistory] Aluno encontrado: ${member.name}, XP atual: ${member.xp}`);
 
     // 2. Validar Treino
     const workout = await this.workoutsRepository.findOne({ where: { id: workoutId } });
-    if (!workout) throw new NotFoundException('Treino não encontrado.');
+    if (!workout) {
+      console.error(`[WorkoutHistory] Treino não encontrado: ${workoutId}`);
+      throw new NotFoundException('Treino não encontrado.');
+    }
+    console.log(`[WorkoutHistory] Treino encontrado: ${workout.title} (ID: ${workout.id})`);
 
     // 3. Verificar se já completou este treino hoje (opcional - para evitar duplicatas)
     const today = new Date();
@@ -78,17 +91,31 @@ export class WorkoutHistoryService {
     if (existingHistory) {
       // Já completou hoje, retornar o histórico existente
       const updatedMember = await this.membersRepository.findOne({ where: { id: memberId } });
+      if (!updatedMember) {
+        throw new NotFoundException('Membro não encontrado.');
+      }
       return {
-        ...existingHistory,
-        member: updatedMember,
+        id: existingHistory.id,
+        xpEarned: existingHistory.xpEarned,
+        member: {
+          id: updatedMember.id,
+          xp: updatedMember.xp,
+          level: updatedMember.level,
+          currentStreak: updatedMember.currentStreak,
+        },
       };
     }
 
     // 4. Adicionar 10 XP ao membro
     const xpEarned = 10;
+    console.log(`[WorkoutHistory] Adicionando ${xpEarned} XP ao membro ${memberId}`);
     await this.membersService.addXP(memberId, xpEarned);
+    console.log(`[WorkoutHistory] XP adicionado com sucesso`);
 
-    // 5. Salvar Histórico
+    // 5. Calcular e atualizar streak
+    await this.updateStreak(memberId);
+
+    // 6. Salvar Histórico
     const now = new Date();
     const history = this.historyRepository.create({
       member,
@@ -100,12 +127,90 @@ export class WorkoutHistoryService {
 
     const savedHistory = await this.historyRepository.save(history);
 
-    // 6. Buscar membro atualizado para retornar XP e level atualizados
+    // 7. Verificar e desbloquear conquistas automaticamente
+    try {
+      await this.achievementsAutoService.checkAndUnlockAchievements(memberId);
+    } catch (error) {
+      console.error('[WorkoutHistory] Erro ao verificar conquistas:', error);
+      // Não falhar o processo se houver erro nas conquistas
+    }
+
+    // 8. Buscar membro atualizado para retornar XP e level atualizados
     const updatedMember = await this.membersRepository.findOne({ where: { id: memberId } });
+    
+    if (!updatedMember) {
+      throw new NotFoundException('Membro não encontrado após completar treino.');
+    }
 
     return {
-      ...savedHistory,
-      member: updatedMember,
+      id: savedHistory.id,
+      xpEarned: savedHistory.xpEarned,
+      member: {
+        id: updatedMember.id,
+        xp: updatedMember.xp,
+        level: updatedMember.level,
+        currentStreak: updatedMember.currentStreak,
+      },
     };
+  }
+
+  // Atualizar streak do membro baseado no histórico de treinos
+  private async updateStreak(memberId: string) {
+    const member = await this.membersRepository.findOne({ where: { id: memberId } });
+    if (!member) return;
+
+    // Buscar histórico de treinos ordenado por data (mais recente primeiro)
+    const history = await this.historyRepository.find({
+      where: { member: { id: memberId } },
+      order: { endTime: 'DESC' },
+    });
+
+    if (history.length === 0) {
+      member.currentStreak = 0;
+      await this.membersRepository.save(member);
+      return;
+    }
+
+    // Calcular streak: dias consecutivos com treinos
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Verificar se treinou hoje
+    const todayWorkouts = history.filter((h) => {
+      const workoutDate = new Date(h.endTime);
+      workoutDate.setHours(0, 0, 0, 0);
+      return workoutDate.getTime() === today.getTime();
+    });
+
+    if (todayWorkouts.length === 0) {
+      // Não treinou hoje, streak = 0
+      member.currentStreak = 0;
+      await this.membersRepository.save(member);
+      return;
+    }
+
+    // Treinou hoje, calcular dias consecutivos
+    streak = 1;
+    let checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() - 1);
+
+    while (true) {
+      const dayWorkouts = history.filter((h) => {
+        const workoutDate = new Date(h.endTime);
+        workoutDate.setHours(0, 0, 0, 0);
+        return workoutDate.getTime() === checkDate.getTime();
+      });
+
+      if (dayWorkouts.length > 0) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    member.currentStreak = streak;
+    await this.membersRepository.save(member);
   }
 }
