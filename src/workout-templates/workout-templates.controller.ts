@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -45,6 +46,16 @@ export class WorkoutTemplatesController {
       dto.memberId,
       instructorId,
     );
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: CreateWorkoutTemplateDto,
+    @Req() req,
+  ) {
+    const instructorId = req.user.instructorId || req.user.sub;
+    return this.templatesService.update(id, dto, instructorId);
   }
 
   @Delete(':id')

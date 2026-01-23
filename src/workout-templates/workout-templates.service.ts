@@ -156,6 +156,63 @@ export class WorkoutTemplatesService {
     return this.workoutsService.getTrainingForMember(memberId);
   }
 
+  async update(
+    id: string,
+    dto: CreateWorkoutTemplateDto,
+    instructorId: string,
+  ) {
+    const template = await this.findOne(id);
+
+    // Verificar se o template pertence ao instrutor
+    if (template.instructor.id !== instructorId) {
+      throw new NotFoundException('Template não encontrado ou sem permissão.');
+    }
+
+    // Atualizar dados básicos do template
+    template.title = dto.title;
+    template.description = dto.description || null;
+    template.updatedAt = new Date();
+    await this.templateRepository.save(template);
+
+    // Deletar items antigos
+    await this.templateItemRepository.delete({ template: { id } });
+
+    // Criar novos items
+    for (const itemDto of dto.items) {
+      // Buscar ou criar exercício
+      let exercise = await this.exerciseRepository.findOne({
+        where: { name: itemDto.exerciseName },
+      });
+
+      if (!exercise) {
+        exercise = this.exerciseRepository.create({
+          name: itemDto.exerciseName,
+          muscleGroup: 'Não especificado',
+          description: null,
+        });
+        exercise = await this.exerciseRepository.save(exercise);
+      }
+
+      // Extrair restTime
+      const restTimeStr = itemDto.rest?.replace(/[^0-9]/g, '') || '60';
+      const restTime = parseInt(restTimeStr) || 60;
+
+      // Criar item do template
+      const templateItem = this.templateItemRepository.create({
+        template,
+        exercise,
+        sets: itemDto.sets,
+        repetitions: this.extractRepetitions(itemDto.reps),
+        weight: itemDto.weight && itemDto.weight > 0 ? itemDto.weight : null,
+        restTime,
+        observations: itemDto.observations || null,
+      });
+      await this.templateItemRepository.save(templateItem);
+    }
+
+    return this.findOne(id);
+  }
+
   async delete(id: string, instructorId: string) {
     const template = await this.findOne(id);
     
