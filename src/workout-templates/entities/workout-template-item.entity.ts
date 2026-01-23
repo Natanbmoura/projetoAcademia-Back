@@ -32,10 +32,11 @@ export class WorkoutTemplateItem {
   @Column({ type: 'float', nullable: true })
   weight: number | null;
 
-  @Column({ nullable: true })
-  restTime: number;
+  @Column({ type: 'int', nullable: true })
+  restTime: number | null;
 
   @Column({ type: 'text', nullable: true })
   observations: string | null;
 }
+
 

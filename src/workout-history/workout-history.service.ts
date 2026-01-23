@@ -124,7 +124,6 @@ export class WorkoutHistoryService {
     try {
       await this.achievementsAutoService.checkAndUnlockAchievements(memberId);
     } catch (error) {
-      console.error('[WorkoutHistory] Erro ao verificar conquistas:', error);
       // Não falhar o processo se houver erro nas conquistas
     }
 

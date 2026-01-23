@@ -39,6 +39,11 @@ import { WorkoutTemplatesModule } from './workout-templates/workout-templates.mo
             },
             autoLoadEntities: true,
             synchronize: config.get<string>('DB_SYNC', 'false') === 'true',
+            connectTimeoutMS: 10000, // 10 segundos de timeout
+            extra: {
+              max: 10, // Máximo de conexões no pool
+              connectionTimeoutMillis: 10000, // Timeout de conexão
+            },
           };
         }
         

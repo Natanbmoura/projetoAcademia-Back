@@ -216,7 +216,6 @@ export class AchievementsAutoService {
           unlockedAchievements.push(achievement.title);
         } catch (error) {
           // Ignorar se já tiver a conquista
-          console.error(`[AchievementsAuto] Erro ao desbloquear conquista:`, error);
         }
       }
     }

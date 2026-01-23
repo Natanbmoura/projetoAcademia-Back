@@ -39,3 +39,4 @@ export class WorkoutTemplate {
   updatedAt: Date;
 }
 
+

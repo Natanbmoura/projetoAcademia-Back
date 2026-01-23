@@ -49,3 +49,4 @@ export class CreateWorkoutTemplateDto {
   items: CreateWorkoutTemplateItemDto[];
 }
 
+

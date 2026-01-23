@@ -27,7 +27,7 @@ export class WorkoutItem {
   @Column({ type: 'float', nullable: true })
   weight: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', nullable: true })
   restTime: number | null; 
 
   @Column({ type: 'text', nullable: true })

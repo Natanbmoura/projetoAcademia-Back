@@ -11,38 +11,29 @@ async function seed() {
     const existing = await instructorsService.findByEmail('professor@academia.com');
     
     if (existing) {
-      console.log('✅ Instrutor de teste já existe:');
-      console.log(`   Email: ${existing.email}`);
-      console.log(`   ID: ${existing.id}`);
-      console.log(`   Nome: ${existing.name}`);
+      console.log('✅ Instrutor de teste já existe');
       await app.close();
       return;
     }
 
     // Criar instrutor de teste
-    const instructor = await instructorsService.create({
+    await instructorsService.create({
       name: 'Professor Teste',
       email: 'professor@academia.com',
       cpf: '12345678900',
       password: 'senha123',
     });
 
-    console.log('✅ Instrutor de teste criado com sucesso!');
-    console.log(`   ID: ${instructor.id}`);
-    console.log(`   Nome: ${instructor.name}`);
-    console.log(`   Email: ${instructor.email}`);
-    console.log(`   CPF: ${instructor.cpf}`);
-    console.log('\n📝 Credenciais para login:');
-    console.log(`   Email: professor@academia.com`);
-    console.log(`   Senha: senha123`);
+    console.log('✅ Instrutor de teste criado com sucesso');
   } catch (error) {
-    console.error('❌ Erro ao criar instrutor de teste:', error);
+    console.error('❌ Erro ao criar instrutor de teste');
   } finally {
     await app.close();
   }
 }
 
 seed();
+
 
 
 

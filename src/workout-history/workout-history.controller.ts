@@ -36,12 +36,10 @@ export class WorkoutHistoryController {
     }
     
     if (!memberId) {
-      console.error('[WorkoutHistoryController] Member ID não encontrado no token');
       throw new Error('Member ID não encontrado. Faça login novamente.');
     }
     
     if (!dto.workoutId) {
-      console.error('[WorkoutHistoryController] Workout ID não encontrado no body');
       throw new Error('Workout ID é obrigatório.');
     }
     
