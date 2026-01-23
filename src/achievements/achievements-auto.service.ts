@@ -20,10 +20,8 @@ export class AchievementsAutoService {
 
   // Verifica e desbloqueia conquistas automaticamente após completar treino
   async checkAndUnlockAchievements(memberId: string) {
-    console.log(`[AchievementsAuto] Verificando conquistas para membro ${memberId}`);
     const member = await this.memberRepository.findOne({ where: { id: memberId } });
     if (!member) {
-      console.error(`[AchievementsAuto] Membro não encontrado: ${memberId}`);
       return;
     }
 
@@ -31,7 +29,6 @@ export class AchievementsAutoService {
     const allAchievements = await this.achievementRepository.find({
       relations: ['members'],
     });
-    console.log(`[AchievementsAuto] Total de conquistas disponíveis: ${allAchievements.length}`);
     
     // Buscar conquistas já desbloqueadas pelo membro usando query builder para garantir
     const unlockedAchievementIds = await this.achievementRepository
@@ -40,8 +37,6 @@ export class AchievementsAutoService {
       .select('achievement.id')
       .getMany()
       .then(achievements => achievements.map(a => a.id));
-    
-    console.log(`[AchievementsAuto] Conquistas já desbloqueadas: ${unlockedAchievementIds.length}`, unlockedAchievementIds);
 
     // Buscar histórico de treinos do membro
     const workoutHistory = await this.historyRepository.find({
@@ -53,13 +48,6 @@ export class AchievementsAutoService {
     const totalXP = Number(member.xp) || 0;
     const currentLevel = member.level || 1;
     const currentStreak = member.currentStreak || 0;
-
-    console.log(`[AchievementsAuto] Estatísticas do membro:`, {
-      totalWorkouts,
-      totalXP,
-      currentLevel,
-      currentStreak,
-    });
 
     // Calcular exercícios completos (aproximação baseada em treinos)
     const totalExercises = totalWorkouts * 5; // Estimativa: ~5 exercícios por treino
@@ -87,7 +75,6 @@ export class AchievementsAutoService {
     for (const achievement of allAchievements) {
       // Verificar se já tem a conquista usando a lista de IDs desbloqueados
       if (unlockedAchievementIds.includes(achievement.id)) {
-        console.log(`[AchievementsAuto] Membro já tem a conquista: ${achievement.title}`);
         continue;
       }
 
@@ -176,27 +163,22 @@ export class AchievementsAutoService {
       else if (title.includes('primeiros 100') || title.includes('primeiro 100')) {
         if (totalXP >= 100) {
           shouldUnlock = true;
-          console.log(`[AchievementsAuto] ✅ Condição XP atendida: ${totalXP} >= 100 para "${achievement.title}"`);
         }
       } else if (title.includes('mil pontos') || (title.includes('mil') && title.includes('pontos'))) {
         if (totalXP >= 1000) {
           shouldUnlock = true;
-          console.log(`[AchievementsAuto] ✅ Condição XP atendida: ${totalXP} >= 1000 para "${achievement.title}"`);
         }
       } else if (title.includes('dez mil') || title.includes('10000')) {
         if (totalXP >= 10000) {
           shouldUnlock = true;
-          console.log(`[AchievementsAuto] ✅ Condição XP atendida: ${totalXP} >= 10000 para "${achievement.title}"`);
         }
       } else if (title.includes('cem mil') || title.includes('100000')) {
         if (totalXP >= 100000) {
           shouldUnlock = true;
-          console.log(`[AchievementsAuto] ✅ Condição XP atendida: ${totalXP} >= 100000 para "${achievement.title}"`);
         }
       } else if (title.includes('lenda viva') || title.includes('500000')) {
         if (totalXP >= 500000) {
           shouldUnlock = true;
-          console.log(`[AchievementsAuto] ✅ Condição XP atendida: ${totalXP} >= 500000 para "${achievement.title}"`);
         }
       }
       
@@ -220,7 +202,6 @@ export class AchievementsAutoService {
               const requiredXP = parseInt(match[1]);
               if (!isNaN(requiredXP) && totalXP >= requiredXP) {
                 shouldUnlock = true;
-                console.log(`[AchievementsAuto] ✅ Condição XP genérica atendida: ${totalXP} >= ${requiredXP} para "${achievement.title}"`);
                 break;
               }
             }
@@ -229,23 +210,15 @@ export class AchievementsAutoService {
       }
 
       if (shouldUnlock) {
-        console.log(`[AchievementsAuto] Desbloqueando conquista: ${achievement.title} (XP: ${totalXP}, Workouts: ${totalWorkouts}, Level: ${currentLevel}, Streak: ${currentStreak})`);
         // Usar o serviço para desbloquear (evita duplicatas)
         try {
           await this.achievementsService.assignToMember(achievement.id, memberId);
           unlockedAchievements.push(achievement.title);
-          console.log(`[AchievementsAuto] ✅ Conquista desbloqueada: ${achievement.title}`);
         } catch (error) {
           // Ignorar se já tiver a conquista
-          console.error(`[AchievementsAuto] ❌ Erro ao desbloquear "${achievement.title}":`, error);
+          console.error(`[AchievementsAuto] Erro ao desbloquear conquista:`, error);
         }
       }
-    }
-
-    if (unlockedAchievements.length > 0) {
-      console.log(`[AchievementsAuto] 🎉 ${unlockedAchievements.length} conquista(s) desbloqueada(s):`, unlockedAchievements);
-    } else {
-      console.log(`[AchievementsAuto] Nenhuma conquista nova desbloqueada`);
     }
 
     return unlockedAchievements;

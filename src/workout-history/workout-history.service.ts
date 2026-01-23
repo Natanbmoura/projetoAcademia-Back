@@ -56,33 +56,23 @@ export class WorkoutHistoryService {
   }
 
   async completeWorkout(memberId: string, workoutId: string) {
-    console.log(`[WorkoutHistory] Completando treino - MemberId: ${memberId}, WorkoutId: ${workoutId}`);
-    
     // 1. Validar Aluno
     const member = await this.membersRepository.findOne({ where: { id: memberId } });
     if (!member) {
-      console.error(`[WorkoutHistory] Aluno não encontrado: ${memberId}`);
       throw new NotFoundException('Aluno não encontrado.');
     }
-    console.log(`[WorkoutHistory] Aluno encontrado: ${member.name}, XP atual: ${member.xp}`);
 
     // 2. Validar Treino
     const workout = await this.workoutsRepository.findOne({ where: { id: workoutId } });
     if (!workout) {
-      console.error(`[WorkoutHistory] Treino não encontrado: ${workoutId}`);
       throw new NotFoundException('Treino não encontrado.');
     }
-    console.log(`[WorkoutHistory] Treino encontrado: ${workout.title} (ID: ${workout.id})`);
 
     // 3. Verificar se já completou este treino hoje (opcional - para evitar duplicatas)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-
-    console.log(`[WorkoutHistory] Verificando se já completou este treino hoje...`);
-    console.log(`[WorkoutHistory] MemberId: ${memberId}, WorkoutId: ${workoutId}`);
-    console.log(`[WorkoutHistory] Hoje: ${today.toISOString()}, Amanhã: ${tomorrow.toISOString()}`);
 
     const existingHistory = await this.historyRepository
       .createQueryBuilder('history')
@@ -93,16 +83,11 @@ export class WorkoutHistoryService {
       .getOne();
 
     if (existingHistory) {
-      console.log(`[WorkoutHistory] ⚠️  Treino já foi completado hoje! ID do histórico: ${existingHistory.id}`);
-      console.log(`[WorkoutHistory] ⚠️  Retornando histórico existente sem adicionar XP novamente`);
-      
       // Já completou hoje, retornar o histórico existente
       const updatedMember = await this.membersRepository.findOne({ where: { id: memberId } });
       if (!updatedMember) {
         throw new NotFoundException('Membro não encontrado.');
       }
-      
-      console.log(`[WorkoutHistory] XP atual do membro: ${updatedMember.xp}`);
       
       return {
         id: existingHistory.id,
@@ -115,29 +100,10 @@ export class WorkoutHistoryService {
         },
       };
     }
-    
-    console.log(`[WorkoutHistory] ✅ Treino ainda não foi completado hoje. Prosseguindo...`);
 
     // 4. Adicionar 10 XP ao membro
     const xpEarned = 10;
-    console.log(`[WorkoutHistory] ========== ADICIONANDO XP ==========`);
-    console.log(`[WorkoutHistory] MemberId: ${memberId}`);
-    console.log(`[WorkoutHistory] XP a adicionar: ${xpEarned}`);
-    
-    try {
-      await this.membersService.addXP(memberId, xpEarned);
-      console.log(`[WorkoutHistory] ✅ XP adicionado com sucesso`);
-      
-      // Verificar se o XP foi realmente adicionado
-      const memberAfterXP = await this.membersRepository.findOne({ where: { id: memberId } });
-      if (memberAfterXP) {
-        console.log(`[WorkoutHistory] ✅ Verificação: XP do membro após adicionar: ${memberAfterXP.xp}`);
-      }
-    } catch (error) {
-      console.error(`[WorkoutHistory] ❌ ERRO ao adicionar XP:`, error);
-      throw error; // Re-throw para não continuar o processo se falhar
-    }
-    console.log(`[WorkoutHistory] =================================`);
+    await this.membersService.addXP(memberId, xpEarned);
 
     // 5. Salvar Histórico PRIMEIRO (antes de calcular streak)
     const now = new Date();
@@ -150,7 +116,6 @@ export class WorkoutHistoryService {
     });
 
     const savedHistory = await this.historyRepository.save(history);
-    console.log(`[WorkoutHistory] Histórico salvo com ID: ${savedHistory.id}`);
 
     // 6. Calcular e atualizar streak DEPOIS de salvar o histórico
     await this.updateStreak(memberId);
@@ -184,10 +149,8 @@ export class WorkoutHistoryService {
 
   // Atualizar streak do membro baseado no histórico de treinos
   private async updateStreak(memberId: string) {
-    console.log(`[WorkoutHistory] Calculando streak para membro ${memberId}`);
     const member = await this.membersRepository.findOne({ where: { id: memberId } });
     if (!member) {
-      console.error(`[WorkoutHistory] Membro não encontrado ao calcular streak: ${memberId}`);
       return;
     }
 
@@ -197,10 +160,7 @@ export class WorkoutHistoryService {
       order: { endTime: 'DESC' },
     });
 
-    console.log(`[WorkoutHistory] Histórico encontrado: ${history.length} treinos`);
-
     if (history.length === 0) {
-      console.log(`[WorkoutHistory] Nenhum histórico, streak = 0`);
       member.currentStreak = 0;
       await this.membersRepository.save(member);
       return;
@@ -218,11 +178,8 @@ export class WorkoutHistoryService {
       return workoutDate.getTime() === today.getTime();
     });
 
-    console.log(`[WorkoutHistory] Treinos hoje: ${todayWorkouts.length}`);
-
     if (todayWorkouts.length === 0) {
       // Não treinou hoje, streak = 0
-      console.log(`[WorkoutHistory] Não treinou hoje, streak = 0`);
       member.currentStreak = 0;
       await this.membersRepository.save(member);
       return;
@@ -253,9 +210,7 @@ export class WorkoutHistoryService {
       }
     }
 
-    console.log(`[WorkoutHistory] Streak calculado: ${streak} dias`);
     member.currentStreak = streak;
     await this.membersRepository.save(member);
-    console.log(`[WorkoutHistory] Streak salvo: ${member.currentStreak}`);
   }
 }

@@ -45,12 +45,6 @@ export class InstructorsService {
       .where('LOWER(instructor.email) = :email', { email: normalizedEmail })
       .getOne();
     
-    if (!instructor) {
-      console.log(`[InstructorsService] Nenhum instrutor encontrado para email: ${normalizedEmail}`);
-    } else {
-      console.log(`[InstructorsService] Instrutor encontrado: ${instructor.name} (${instructor.email})`);
-    }
-    
     return instructor;
   }
 }

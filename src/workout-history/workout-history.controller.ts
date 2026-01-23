@@ -21,10 +21,6 @@ export class WorkoutHistoryController {
 
   @Post('complete')
   completeWorkout(@Body() dto: CompleteWorkoutDto, @Req() req) {
-    console.log('[WorkoutHistoryController] ========== COMPLETAR TREINO ==========');
-    console.log('[WorkoutHistoryController] Body recebido:', JSON.stringify(dto, null, 2));
-    console.log('[WorkoutHistoryController] User do token:', JSON.stringify(req.user, null, 2));
-    
     // Pega o memberId APENAS do token JWT (não do body)
     // O JWT strategy retorna { memberId, email, role: 'member' } para alunos
     // O DTO não aceita memberId no body para segurança
@@ -40,20 +36,14 @@ export class WorkoutHistoryController {
     }
     
     if (!memberId) {
-      console.error('[WorkoutHistoryController] ❌ Member ID não encontrado!');
-      console.error('[WorkoutHistoryController] req.user completo:', JSON.stringify(req.user, null, 2));
-      console.error('[WorkoutHistoryController] req.body completo:', JSON.stringify(req.body, null, 2));
+      console.error('[WorkoutHistoryController] Member ID não encontrado no token');
       throw new Error('Member ID não encontrado. Faça login novamente.');
     }
     
     if (!dto.workoutId) {
-      console.error('[WorkoutHistoryController] ❌ Workout ID não encontrado no body');
+      console.error('[WorkoutHistoryController] Workout ID não encontrado no body');
       throw new Error('Workout ID é obrigatório.');
     }
-    
-    console.log(`[WorkoutHistoryController] ✅ Usando memberId: ${memberId}`);
-    console.log(`[WorkoutHistoryController] ✅ Usando workoutId: ${dto.workoutId}`);
-    console.log('[WorkoutHistoryController] =================================');
     
     return this.historyService.completeWorkout(memberId, dto.workoutId);
   }

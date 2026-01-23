@@ -157,7 +157,6 @@ export class MembersService {
     const member = await this.findByEmail(normalizedEmail);
     
     if (!member || !member.passwordHash) {
-      console.log(`[MembersService] Membro não encontrado ou sem senha: ${normalizedEmail}`);
       return null;
     }
 
@@ -165,7 +164,6 @@ export class MembersService {
     const isValid = await bcrypt.compare(password, member.passwordHash);
     
     if (!isValid) {
-      console.log(`[MembersService] Senha incorreta para email: ${normalizedEmail}`);
       return null;
     }
 
@@ -173,7 +171,6 @@ export class MembersService {
     member.lastLoginAt = new Date();
     await this.membersRepository.save(member);
 
-    console.log(`[MembersService] Login válido para membro: ${member.name} (${member.email})`);
     return member;
   }
 
@@ -203,30 +200,19 @@ export class MembersService {
   }
 
   async addXP(memberId: string, xpAmount: number) {
-    console.log(`[MembersService] ========== ADICIONANDO XP ==========`);
-    console.log(`[MembersService] MemberId: ${memberId}`);
-    console.log(`[MembersService] XP Amount: ${xpAmount}`);
-    
     if (!memberId) {
-      console.error(`[MembersService] ❌ MemberId é vazio ou undefined!`);
       throw new NotFoundException('Member ID é obrigatório');
     }
     
     if (!xpAmount || xpAmount <= 0) {
-      console.error(`[MembersService] ❌ XP Amount inválido: ${xpAmount}`);
       throw new Error('XP Amount deve ser maior que zero');
     }
     
     const member = await this.membersRepository.findOne({ where: { id: memberId } });
     
     if (!member) {
-      console.error(`[MembersService] ❌ Membro não encontrado: ${memberId}`);
       throw new NotFoundException('Membro não encontrado');
     }
-
-    console.log(`[MembersService] Membro encontrado: ${member.name} (${member.email})`);
-    console.log(`[MembersService] XP atual: ${member.xp} (tipo: ${typeof member.xp})`);
-    console.log(`[MembersService] Level atual: ${member.level}`);
 
     const oldXP = Number(member.xp) || 0;
     const oldLevel = member.level || 1;
@@ -242,22 +228,9 @@ export class MembersService {
     // Ex: Level 1 = 0-50 XP, Level 2 = 51-100 XP, Level 3 = 101-150 XP, etc.
     const newLevel = Math.floor(newXP / 50) + 1;
     member.level = newLevel;
-
-    console.log(`[MembersService] XP atualizado: ${oldXP} -> ${newXP}`);
-    console.log(`[MembersService] Level atualizado: ${oldLevel} -> ${newLevel}`);
     
-    try {
-      const savedMember = await this.membersRepository.save(member);
-      console.log(`[MembersService] ✅ Membro salvo com sucesso!`);
-      console.log(`[MembersService] XP final no banco: ${savedMember.xp} (tipo: ${typeof savedMember.xp})`);
-      console.log(`[MembersService] Level final no banco: ${savedMember.level}`);
-      console.log(`[MembersService] =================================`);
-      
-      return savedMember;
-    } catch (error) {
-      console.error(`[MembersService] ❌ Erro ao salvar membro:`, error);
-      throw error;
-    }
+    const savedMember = await this.membersRepository.save(member);
+    return savedMember;
   }
 
   async getRanking(type: 'monthly' | 'total') {

@@ -20,14 +20,10 @@ export class AuthService {
     const instructor = await this.instructorsService.findByEmail(normalizedEmail);
     
     if (!instructor) {
-      console.log(`[Auth] Instrutor não encontrado para email: ${normalizedEmail}`);
       return null;
     }
 
     const ok = await bcrypt.compare(password, instructor.passwordHash);
-    if (!ok) {
-      console.log(`[Auth] Senha incorreta para email: ${normalizedEmail}`);
-    }
     return ok ? instructor : null;
   }
 
@@ -35,16 +31,11 @@ export class AuthService {
     // O email já vem normalizado do DTO transform
     const normalizedEmail = dto.email;
     
-    console.log(`[Auth] Tentativa de login para email: ${normalizedEmail}`);
-    
     const instructor = await this.validateInstructor(normalizedEmail, dto.password);
     
     if (!instructor) {
-      console.log(`[Auth] Login falhou - credenciais inválidas para email: ${normalizedEmail}`);
       throw new UnauthorizedException('Credenciais inválidas');
     }
-    
-    console.log(`[Auth] Login bem-sucedido para instrutor: ${instructor.name} (${instructor.email})`);
 
     const payload = { sub: instructor.id, email: instructor.email };
     return {
@@ -61,16 +52,11 @@ export class AuthService {
   async memberLogin(dto: MemberLoginDto) {
     const normalizedEmail = dto.email;
     
-    console.log(`[Auth] Tentativa de login de membro para email: ${normalizedEmail}`);
-    
     const member = await this.membersService.validateMember(normalizedEmail, dto.password);
     
     if (!member) {
-      console.log(`[Auth] Login de membro falhou - credenciais inválidas para email: ${normalizedEmail}`);
       throw new UnauthorizedException('Email ou senha incorretos');
     }
-    
-    console.log(`[Auth] Login bem-sucedido para membro: ${member.name} (${member.email})`);
 
     const payload = { sub: member.id, email: member.email, role: 'member' };
     return {
