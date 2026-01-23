@@ -28,8 +28,8 @@ export class WorkoutItem {
   weight: number | null;
 
   @Column({ nullable: true })
-  restTime: number; 
+  restTime: number | null; 
 
   @Column({ type: 'text', nullable: true })
-  observations: string;
+  observations: string | null;
 }

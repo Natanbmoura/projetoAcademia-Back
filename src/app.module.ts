@@ -13,6 +13,7 @@ import { WorkoutItemsModule } from './workout-items/workout-items.module';
 // --- NOVOS IMPORTS ADICIONADOS ---
 import { WorkoutHistoryModule } from './workout-history/workout-history.module';
 import { AchievementsModule } from './achievements/achievements.module';
+import { WorkoutTemplatesModule } from './workout-templates/workout-templates.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { AchievementsModule } from './achievements/achievements.module';
     WorkoutItemsModule,
     WorkoutHistoryModule,
     AchievementsModule,
+    WorkoutTemplatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
