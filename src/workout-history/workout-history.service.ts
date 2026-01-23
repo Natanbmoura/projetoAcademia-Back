@@ -80,6 +80,10 @@ export class WorkoutHistoryService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    console.log(`[WorkoutHistory] Verificando se já completou este treino hoje...`);
+    console.log(`[WorkoutHistory] MemberId: ${memberId}, WorkoutId: ${workoutId}`);
+    console.log(`[WorkoutHistory] Hoje: ${today.toISOString()}, Amanhã: ${tomorrow.toISOString()}`);
+
     const existingHistory = await this.historyRepository
       .createQueryBuilder('history')
       .where('history.memberId = :memberId', { memberId })
@@ -89,11 +93,17 @@ export class WorkoutHistoryService {
       .getOne();
 
     if (existingHistory) {
+      console.log(`[WorkoutHistory] ⚠️  Treino já foi completado hoje! ID do histórico: ${existingHistory.id}`);
+      console.log(`[WorkoutHistory] ⚠️  Retornando histórico existente sem adicionar XP novamente`);
+      
       // Já completou hoje, retornar o histórico existente
       const updatedMember = await this.membersRepository.findOne({ where: { id: memberId } });
       if (!updatedMember) {
         throw new NotFoundException('Membro não encontrado.');
       }
+      
+      console.log(`[WorkoutHistory] XP atual do membro: ${updatedMember.xp}`);
+      
       return {
         id: existingHistory.id,
         xpEarned: existingHistory.xpEarned,
@@ -105,12 +115,29 @@ export class WorkoutHistoryService {
         },
       };
     }
+    
+    console.log(`[WorkoutHistory] ✅ Treino ainda não foi completado hoje. Prosseguindo...`);
 
     // 4. Adicionar 10 XP ao membro
     const xpEarned = 10;
-    console.log(`[WorkoutHistory] Adicionando ${xpEarned} XP ao membro ${memberId}`);
-    await this.membersService.addXP(memberId, xpEarned);
-    console.log(`[WorkoutHistory] XP adicionado com sucesso`);
+    console.log(`[WorkoutHistory] ========== ADICIONANDO XP ==========`);
+    console.log(`[WorkoutHistory] MemberId: ${memberId}`);
+    console.log(`[WorkoutHistory] XP a adicionar: ${xpEarned}`);
+    
+    try {
+      await this.membersService.addXP(memberId, xpEarned);
+      console.log(`[WorkoutHistory] ✅ XP adicionado com sucesso`);
+      
+      // Verificar se o XP foi realmente adicionado
+      const memberAfterXP = await this.membersRepository.findOne({ where: { id: memberId } });
+      if (memberAfterXP) {
+        console.log(`[WorkoutHistory] ✅ Verificação: XP do membro após adicionar: ${memberAfterXP.xp}`);
+      }
+    } catch (error) {
+      console.error(`[WorkoutHistory] ❌ ERRO ao adicionar XP:`, error);
+      throw error; // Re-throw para não continuar o processo se falhar
+    }
+    console.log(`[WorkoutHistory] =================================`);
 
     // 5. Salvar Histórico PRIMEIRO (antes de calcular streak)
     const now = new Date();

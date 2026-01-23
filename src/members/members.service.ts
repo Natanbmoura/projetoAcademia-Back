@@ -203,32 +203,61 @@ export class MembersService {
   }
 
   async addXP(memberId: string, xpAmount: number) {
-    console.log(`[MembersService] Adicionando ${xpAmount} XP ao membro ${memberId}`);
+    console.log(`[MembersService] ========== ADICIONANDO XP ==========`);
+    console.log(`[MembersService] MemberId: ${memberId}`);
+    console.log(`[MembersService] XP Amount: ${xpAmount}`);
+    
+    if (!memberId) {
+      console.error(`[MembersService] ❌ MemberId é vazio ou undefined!`);
+      throw new NotFoundException('Member ID é obrigatório');
+    }
+    
+    if (!xpAmount || xpAmount <= 0) {
+      console.error(`[MembersService] ❌ XP Amount inválido: ${xpAmount}`);
+      throw new Error('XP Amount deve ser maior que zero');
+    }
     
     const member = await this.membersRepository.findOne({ where: { id: memberId } });
     
     if (!member) {
-      console.error(`[MembersService] Membro não encontrado: ${memberId}`);
+      console.error(`[MembersService] ❌ Membro não encontrado: ${memberId}`);
       throw new NotFoundException('Membro não encontrado');
     }
 
-    const oldXP = Number(member.xp);
-    const oldLevel = member.level;
+    console.log(`[MembersService] Membro encontrado: ${member.name} (${member.email})`);
+    console.log(`[MembersService] XP atual: ${member.xp} (tipo: ${typeof member.xp})`);
+    console.log(`[MembersService] Level atual: ${member.level}`);
 
+    const oldXP = Number(member.xp) || 0;
+    const oldLevel = member.level || 1;
+
+    // Garantir que XP seja um número válido
+    const currentXP = Number(member.xp) || 0;
+    const newXP = currentXP + xpAmount;
+    
     // Adicionar XP
-    member.xp = Number(member.xp) + xpAmount;
+    member.xp = newXP;
 
     // Calcular novo level (cada level precisa de level * 50 XP)
     // Ex: Level 1 = 0-50 XP, Level 2 = 51-100 XP, Level 3 = 101-150 XP, etc.
-    const newLevel = Math.floor(member.xp / 50) + 1;
+    const newLevel = Math.floor(newXP / 50) + 1;
     member.level = newLevel;
 
-    console.log(`[MembersService] XP atualizado: ${oldXP} -> ${member.xp}, Level: ${oldLevel} -> ${newLevel}`);
+    console.log(`[MembersService] XP atualizado: ${oldXP} -> ${newXP}`);
+    console.log(`[MembersService] Level atualizado: ${oldLevel} -> ${newLevel}`);
     
-    const savedMember = await this.membersRepository.save(member);
-    console.log(`[MembersService] Membro salvo com sucesso. XP final: ${savedMember.xp}, Level: ${savedMember.level}`);
-    
-    return savedMember;
+    try {
+      const savedMember = await this.membersRepository.save(member);
+      console.log(`[MembersService] ✅ Membro salvo com sucesso!`);
+      console.log(`[MembersService] XP final no banco: ${savedMember.xp} (tipo: ${typeof savedMember.xp})`);
+      console.log(`[MembersService] Level final no banco: ${savedMember.level}`);
+      console.log(`[MembersService] =================================`);
+      
+      return savedMember;
+    } catch (error) {
+      console.error(`[MembersService] ❌ Erro ao salvar membro:`, error);
+      throw error;
+    }
   }
 
   async getRanking(type: 'monthly' | 'total') {
