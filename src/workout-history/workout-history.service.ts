@@ -68,7 +68,7 @@ export class WorkoutHistoryService {
       throw new NotFoundException('Treino não encontrado.');
     }
 
-    // 3. Verificar se já completou este treino hoje (opcional - para evitar duplicatas)
+    // 3. Verificar se já completou qualquer treino hoje (para ganhar XP apenas 1 vez por dia)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -77,13 +77,12 @@ export class WorkoutHistoryService {
     const existingHistory = await this.historyRepository
       .createQueryBuilder('history')
       .where('history.memberId = :memberId', { memberId })
-      .andWhere('history.workoutId = :workoutId', { workoutId })
       .andWhere('history.endTime >= :today', { today })
       .andWhere('history.endTime < :tomorrow', { tomorrow })
       .getOne();
 
     if (existingHistory) {
-      // Já completou hoje, retornar o histórico existente
+      // Já completou um treino hoje, não ganha XP novamente
       const updatedMember = await this.membersRepository.findOne({ where: { id: memberId } });
       if (!updatedMember) {
         throw new NotFoundException('Membro não encontrado.');
@@ -91,7 +90,7 @@ export class WorkoutHistoryService {
       
       return {
         id: existingHistory.id,
-        xpEarned: existingHistory.xpEarned,
+        xpEarned: 0, // Não ganhou XP porque já completou um treino hoje
         member: {
           id: updatedMember.id,
           xp: updatedMember.xp,
