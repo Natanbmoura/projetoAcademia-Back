@@ -128,6 +128,19 @@ export class WorkoutTemplatesService {
       throw new NotFoundException('Instrutor não encontrado.');
     }
 
+    // Verificar se já existe um treino com este título para este aluno
+    const existingWorkout = await this.workoutRepository.findOne({
+      where: {
+        member: { id: memberId },
+        title: template.title,
+      },
+    });
+
+    // Se já existe, retornar os treinos sem criar um novo
+    if (existingWorkout) {
+      return this.workoutsService.getTrainingForMember(memberId);
+    }
+
     // Criar workout baseado no template
     const workout = this.workoutRepository.create({
       title: template.title,
